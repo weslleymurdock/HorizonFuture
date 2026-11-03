@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mudblazor": {
+      "serverUrl": "http://localhost:8000/mcp",
+      "timeoutSeconds": 600
+    }
+  }
+}
