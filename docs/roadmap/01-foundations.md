@@ -6,7 +6,7 @@ Turn the starter repository into an agreed, testable implementation plan grounde
 
 ## Dependencies
 
-None. Current baseline: .NET 10 projects under `src/HF.*`; `HF.API` contains the generated weather sample. No product domain, MAUI app, tests, authentication, persistence, or sync code is present.
+None. Current baseline: .NET 10 projects under `src/`; `HF.Mobile` is a MAUI Blazor Hybrid template, `HF.Web` is a Blazor WebAssembly template with MudBlazor 9.*, and `HF.API` contains the generated weather sample. No product domain, production client workflows, API integration, tests, authentication, persistence, or sync code is present.
 
 ## Work
 
@@ -14,7 +14,7 @@ None. Current baseline: .NET 10 projects under `src/HF.*`; `HF.API` contains the
 - Define offline use cases, expected outage duration, shared-device use, account lifecycle, data volumes, supported platforms, accessibility, and connectivity constraints.
 - Define data classification, minimum necessary collection, retention/deletion, audit needs, and who may view/change each record.
 - Record architecture decisions and assumptions, including stable identifier strategy, API compatibility expectations, local schema support window, and provider evaluation criteria.
-- Replace starter template content only as implementation work begins; keep this documentation explicit that the template currently remains.
+- Replace starter template content only as implementation work begins; keep this documentation explicit that the templates currently remain.
 
 ## Acceptance criteria
 

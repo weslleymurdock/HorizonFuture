@@ -1,10 +1,12 @@
 # Architecture and data boundaries
 
+## Current repository baseline
+
+The repository contains an ASP.NET Core API project and separate Domain, Application, Infrastructure, and Composition projects, plus two UI scaffolds: `HF.Mobile` is a MAUI Blazor Hybrid template and `HF.Web` is a Blazor WebAssembly template using MudBlazor 9.*. The mobile scaffold does not yet reference MudBlazor. Both clients still lack production workflows, API integration, authentication, local persistence, and sync. The API still contains a weather sample. These are templates, not completed product capabilities.
+
 ## Planned system
 
-The current repository has an ASP.NET Core API project and separate Domain, Application, Infrastructure, and Composition projects. The MAUI client and all production capabilities described here are planned, not implemented.
-
-The target is an offline-first .NET MAUI client with local SQLite, an ASP.NET Core REST service, and a central relational store. Domain rules belong in Domain; use cases and ports in Application; concrete storage/network adapters in Infrastructure; HTTP transport and authorization enforcement in API; host wiring in Composition; UI and device integration in a separate MAUI application.
+The target is an offline-first .NET MAUI client with local SQLite, a browser Blazor WebAssembly client, an ASP.NET Core REST service, and a central relational store. Domain rules belong in Domain; use cases and ports in Application; concrete storage/network adapters in Infrastructure; HTTP transport and authorization enforcement in API; host wiring in Composition; UI and device integration stay in their respective clients.
 
 ## Database provider gate
 

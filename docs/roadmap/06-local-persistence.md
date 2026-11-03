@@ -2,7 +2,7 @@
 
 ## Objective
 
-Provide a versioned local operational store and app foundation so supported workflows work without a network connection.
+Evolve the existing MAUI Blazor Hybrid template into a versioned local operational store and app foundation so supported workflows work without a network connection.
 
 ## Dependencies
 
@@ -10,7 +10,7 @@ Phases 01–02 and the API contract direction from phase 04.
 
 ## Work
 
-- Add a distinct .NET MAUI application with platform-specific configuration; keep UI/device APIs outside server/domain projects.
+- Extend the existing `src/HF.Mobile` MAUI Blazor Hybrid scaffold with supported product workflows and platform-specific configuration; keep UI/device APIs outside server/domain projects.
 - Implement local SQLite schema, migrations, repositories, and transaction boundaries for user changes and Outbox records.
 - Choose local encryption and key storage based on supported platform capabilities and the privacy threat model.
 - Define application startup, sign-in/session behavior, local account switching, device identity, and safe handling of multiple users on shared devices.
