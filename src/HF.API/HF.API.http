@@ -1,0 +1,6 @@
+@HF.API_HostAddress = http://localhost:5267
+
+GET {{HF.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
