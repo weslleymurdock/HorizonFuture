@@ -9,4 +9,6 @@ These instructions apply to `docs/`. Read the root `AGENTS.md` first.
 - Prefer concrete checks (tests, migrations, deployment exercises, measured compatibility results) over vague completion language.
 - Treat student data as sensitive. Use synthetic examples and avoid personal data in documentation.
 - Keep architecture decisions traceable. Record provider compatibility and material changes to data, API, sync, conflict, and rollout contracts.
+- The planned deployment is one backend and PostgreSQL database per NGO, with separate secrets/configuration and a MAUI backend URL per installation. Do not add cross-NGO tenant partitioning to ordinary application data paths; any future aggregation service is optional and separately authorized.
+- Preserve offline-first MAUI SQLite and the planned transactional Outbox/Inbox, idempotent Push, ordered server cursor, optimistic concurrency, and entity-specific conflict rules when updating architecture or deployment docs.
 - Keep links relative and verify that they resolve after changes.

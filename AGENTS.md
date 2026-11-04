@@ -15,8 +15,8 @@ The intended product is an offline-first app for an NGO with multiple school uni
 
 - .NET MAUI clients use local SQLite for normal reads/writes and remain useful without connectivity.
 - ASP.NET Core REST API is the authenticated server boundary.
-- Turso/libSQL is a candidate central database only after validating current EF Core/provider compatibility, transactions, migrations, generated values, concurrency, and operations. Do not infer compatibility from SQLite branding; record evidence and keep provider code behind abstractions.
-- Resolve organization/unit scope from authenticated identity and server-side membership. Never trust client tenant identifiers as authorization.
+- Each NGO receives an independent single-tenant backend deployment, PostgreSQL database, secrets/configuration, and MAUI app configured with that installation’s backend URL. Keep provider code behind abstractions and migrations portable where appropriate.
+- Application data paths serve one NGO per installation. Do not require tenant IDs or tenant-isolation filters for per-installation records; enforce user, role, ownership, and school-unit permissions within that NGO. An optional separately authorized cross-installation reporting service may be considered later and is not a normal-operation dependency.
 - Bidirectional Push/Pull sync uses transactional Outbox/Inbox, idempotency, a server-issued ordered change feed/cursor, optimistic concurrency, and explicit entity-specific conflict policies.
 - Register and revoke devices; connectivity is intermittent and retries/scheduling must be safe.
 - Store media outside relational rows, with separately authorized references and transfer lifecycle.

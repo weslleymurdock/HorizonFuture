@@ -2,7 +2,7 @@
 
 ## Objective
 
-Prove isolation, offline correctness, sync reliability, migration safety, and production diagnosability without collecting sensitive payload data.
+Prove within-installation authorization, offline correctness, sync reliability, migration safety, and production diagnosability without collecting sensitive payload data.
 
 ## Dependencies
 
@@ -12,7 +12,7 @@ Phases 03–09.
 
 - Build layered domain, application, API authorization, persistence integration, local SQLite migration, contract, and MAUI workflow tests.
 - Add property/fault tests for duplicate operations, reorderings, clock skew, cursor paging, interruption, and conflict policy.
-- Use synthetic data and include cross-tenant adversarial tests. Keep cloud/database integration tests explicitly opt-in and isolated.
+- Use synthetic data and include adversarial authorization tests across users and school units within one installation. Keep cloud/database integration tests explicitly opt-in and isolated.
 - Add metrics for sync attempts/outcomes, queue age/size, retry counts, cursor resets, conflicts, API latency/errors, and media transfer failures.
 - Use correlation, operation, and device identifiers while redacting PII and sync payloads. Define dashboards and alert thresholds.
 - Document support diagnostics and safe export procedures that remove sensitive data.
