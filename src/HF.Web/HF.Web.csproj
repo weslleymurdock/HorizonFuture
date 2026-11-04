@@ -13,4 +13,8 @@
     <PackageReference Include="MudBlazor" Version="9.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HF.Client\HF.Client.csproj" />
+  </ItemGroup>
+
 </Project>

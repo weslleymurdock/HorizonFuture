@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HF.API/HF.API.csproj" />
+    <Project Path="src/HF.Application/HF.Application.csproj" />
+    <Project Path="src/HF.Composition/HF.Composition.csproj" />
+    <Project Path="src/HF.Domain/HF.Domain.csproj" />
+    <Project Path="src/HF.Infrastructure/HF.Infrastructure.csproj" />
+    <Project Path="src/HF.Mobile/HF.Mobile.csproj" />
+    <Project Path="src/HF.Web/HF.Web.csproj" />
+  </Folder>
+</Solution>

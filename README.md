@@ -1,6 +1,4 @@
-# 🆕 My Project
-
-## ❓ What is My Project?
+# 🎨 Horizon Future - Non-Gov Org Management
 
 ## ⚡ Getting Started
 
