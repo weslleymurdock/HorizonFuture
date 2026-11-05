@@ -601,7 +601,7 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<bool>> AssignUserPermissionGroupAsync(string userId, AssignPermissionGroupDto request, CancellationToken ct = default)
+    public async Task<AuthResult<bool>> AssignUserPermissionGroupAsync(string userId, Auth.Models.AssignPermissionGroupDto request, CancellationToken ct = default)
     {
         try
         {
