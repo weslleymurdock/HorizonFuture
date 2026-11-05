@@ -1,9 +1,9 @@
 @page "/not-found"
 @layout MainLayout
+@inject NotFoundPageModel PageModel
+<PageTitle>@PageModel.Title</PageTitle>
 
-<PageTitle>Not Found</PageTitle>
-
-<MudText Typo="Typo.h3" GutterBottom="true">404 - Page Not Found</MudText>
-<MudText Class="mb-8">Sorry, the content you are looking for does not exist.</MudText>
+<MudText Typo="Typo.h3" GutterBottom="true">@PageModel.Legend</MudText>
+<MudText Class="mb-8">@PageModel.Description</MudText>
 
 <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">Go to Home</MudButton>

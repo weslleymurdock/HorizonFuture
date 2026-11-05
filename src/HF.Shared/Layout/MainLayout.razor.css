@@ -1,77 +1,20 @@
-.page {
-    position: relative;
-    display: flex;
-    flex-direction: column;
+/* Safe area adjustments for mobile and desktop hosts */
+::deep .mud-appbar.mud-appbar-fixed-top {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
 }
 
-main {
-    flex: 1;
+::deep .mud-drawer-fixed.mud-drawer-clipped-always,
+::deep .mud-drawer-fixed.mud-drawer-responsive.mud-drawer-clipped-always,
+::deep .mud-drawer-fixed.mud-drawer-temporary.mud-drawer-clipped-always {
+    top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
+    height: calc(100% - var(--mud-appbar-height) - env(safe-area-inset-top, 0px));
 }
 
-.sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
-}
-
-.top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
-}
-
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row ::deep a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row {
-        justify-content: space-between;
-    }
-
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        margin-left: 0;
-    }
-}
-
-@media (min-width: 641px) {
-    .page {
-        flex-direction: row;
-    }
-
-    .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
-    }
-
-    .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
-
-    .top-row.auth ::deep a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
-    }
-
-    .top-row, article {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
-    }
+::deep .app-main-content,
+::deep .mud-main-content {
+    padding-top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
 }

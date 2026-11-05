@@ -2,6 +2,26 @@ html, body {
     font-family: 'Roboto', Helvetica, Arial, sans-serif;
 }
 
+/* Safe area adjustments for mobile hosts (Android and iOS) */
+.mud-appbar.mud-appbar-fixed-top {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
+}
+
+.mud-drawer-fixed.mud-drawer-clipped-always,
+.mud-drawer-fixed.mud-drawer-responsive.mud-drawer-clipped-always,
+.mud-drawer-fixed.mud-drawer-temporary.mud-drawer-clipped-always {
+    top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
+    height: calc(100% - var(--mud-appbar-height) - env(safe-area-inset-top, 0px));
+}
+
+.mud-main-content {
+    padding-top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+}
+
 #blazor-error-ui {
     color-scheme: light;
     background: rgba(30, 30, 45, 0.95);

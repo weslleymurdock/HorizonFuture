@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\HF.Infrastructure\HF.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\HF.Composition\HF.Composition.csproj" />
     <ProjectReference Include="..\..\src\HF.API\HF.API.csproj" />
+    <ProjectReference Include="..\..\src\HF.Shared\HF.Shared.csproj" />
   </ItemGroup>
 
 </Project>
