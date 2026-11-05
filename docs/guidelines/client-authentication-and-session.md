@@ -106,6 +106,7 @@ During architectural inspection, three distinct root causes were identified that
 2. **Asynchronous Authentication State Race Condition:**
    - *Problem:* Upon login success, `SubmitAsync` immediately called `Navigation.NavigateTo("/courses")`. While `AuthService` saved the tokens to `ITokenStore`, triggering `TokensChanged`, `HorizonAuthenticationStateProvider` dispatches `NotifyAuthenticationStateChanged` asynchronously to Blazor's `CascadingAuthenticationState`. The synchronous navigation occurred before Blazor's cascading parameter updated. Consequently, `AuthorizeRouteView` evaluated the route using the previous unauthenticated state, hit `<NotAuthorized>`, and invoked `<RedirectToLogin />`, bouncing the user back to `/auth/login`.
    - *Fix:* `Login.razor` now explicitly awaits the resolved state before navigating:
+
      ```csharp
      await AuthStateProvider.GetAuthenticationStateAsync();
      Navigation.NavigateTo(destination);
