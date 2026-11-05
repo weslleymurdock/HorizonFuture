@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\HF.Application\HF.Application.csproj" />
+    <ProjectReference Include="..\..\src\HF.Infrastructure\HF.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

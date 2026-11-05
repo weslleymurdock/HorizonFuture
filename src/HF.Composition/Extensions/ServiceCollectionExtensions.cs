@@ -3,8 +3,11 @@ using HF.Application.AssetsLiabilities.Abstract;
 using HF.Application.AssetsLiabilities.Services;
 using HF.Application.Attendances.Abstract;
 using HF.Application.Attendances.Services;
+using HF.Application.Auth;
 using HF.Application.Auth.Abstract;
 using HF.Application.Auth.Validators;
+using HF.Infrastructure.Auth.Requirements;
+using Microsoft.AspNetCore.Authorization;
 using HF.Application.ClassSessions.Abstract;
 using HF.Application.ClassSessions.Services;
 using HF.Application.Collaborators.Abstract;
@@ -187,7 +190,17 @@ public static class ServiceCollectionExtensions
                     }
                 };
             });
-            _ = services.AddAuthorization();
+            _ = services.AddAuthorization(options =>
+            {
+                foreach (var permission in AppPermissions.All)
+                {
+                    options.AddPolicy(permission, policy =>
+                    {
+                        policy.RequireAuthenticatedUser();
+                        policy.Requirements.Add(new PermissionRequirement(permission));
+                    });
+                }
+            });
             return services;
         }
 
@@ -235,6 +248,9 @@ public static class ServiceCollectionExtensions
             });
 
             _ = services.AddScoped<IIdentityService, IdentityService>();
+            _ = services.AddScoped<IIdentityAdminService, IdentityAdminService>();
+            _ = services.AddScoped<IUserPermissionEvaluator, UserPermissionEvaluator>();
+            _ = services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
             _ = services.AddSingleton<IRevokedTokenStore, RevokedTokenStore>();
             _ = services.AddScoped<IJwtTokenService, JwtTokenService>();
             _ = services.AddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
@@ -275,4 +291,4 @@ public static class ServiceCollectionExtensions
 
         return trimmed;
     }
-}
+}

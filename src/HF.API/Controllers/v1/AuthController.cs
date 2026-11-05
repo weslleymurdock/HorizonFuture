@@ -1,4 +1,5 @@
 using Mediator;
+using HF.Application.Auth;
 using HF.Application.Auth.Dtos;
 using HF.Application.Auth.Requests;
 using HF.Application.Auth.Responses;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-namespace HF.API.v1.Controllers;
+namespace HF.API.Controllers.v1;
 
 /// <summary>
 /// Provides endpoints for authentication, external identity federation, and identity management.
@@ -262,6 +263,295 @@ public class AuthController(IMediator mediator) : ControllerBase
                 cancellationToken);
         return result.Success
             ? Ok(result.Value)
+            : BadRequest(result);
+    }
+
+    /// <summary>Lists all roles in the catalog with hierarchy rank.</summary>
+    [HttpGet("roles")]
+    [Authorize(Policy = AppPermissions.RolesRead)]
+    [ProducesResponseType<ResponseBase<IReadOnlyList<RoleCatalogResponse>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListCatalogRoles(CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new ListCatalogRolesRequest(), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Gets the assigned roles for a target user.</summary>
+    [HttpGet("users/{userId}/roles")]
+    [Authorize(Policy = AppPermissions.RolesRead)]
+    [ProducesResponseType<ResponseBase<UserRolesResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ResponseBase<UserRolesResponse>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserRoles(
+        [FromRoute] string userId,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new GetUserRolesRequest(userId), cancellationToken);
+        return result.Success
+            ? Ok(result)
+            : NotFound(result);
+    }
+
+    /// <summary>Assigns a catalog role to a target user, strictly enforcing hierarchy and anti-self-elevation.</summary>
+    [HttpPost("users/{userId}/roles")]
+    [Authorize(Policy = AppPermissions.RolesManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignRole(
+        [FromRoute] string userId,
+        [FromBody] AssignRoleDto dto,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new AssignUserRoleRequest(actorUserId, userId, dto.RoleName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Removes a role from a target user, strictly enforcing hierarchy, anti-self-elevation, and last-admin protection.</summary>
+    [HttpDelete("users/{userId}/roles/{roleName}")]
+    [Authorize(Policy = AppPermissions.RolesManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveRole(
+        [FromRoute] string userId,
+        [FromRoute] string roleName,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new RemoveUserRoleRequest(actorUserId, userId, roleName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Lists all permissions and named permission groups in the catalog.</summary>
+    [HttpGet("permissions")]
+    [Authorize(Policy = AppPermissions.PermissionsRead)]
+    [ProducesResponseType<ResponseBase<PermissionCatalogResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListCatalogPermissions(CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new ListCatalogPermissionsRequest(), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>Gets effective permissions, direct grants, explicit revocations, and groups for a target user.</summary>
+    [HttpGet("users/{userId}/permissions")]
+    [Authorize(Policy = AppPermissions.PermissionsRead)]
+    [ProducesResponseType<ResponseBase<UserPermissionsResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ResponseBase<UserPermissionsResponse>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserPermissions(
+        [FromRoute] string userId,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new GetUserPermissionsRequest(userId), cancellationToken);
+        return result.Success
+            ? Ok(result)
+            : NotFound(result);
+    }
+
+    /// <summary>Grants a permission directly to a user.</summary>
+    [HttpPost("users/{userId}/permissions/grant")]
+    [Authorize(Policy = AppPermissions.PermissionsManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GrantPermission(
+        [FromRoute] string userId,
+        [FromBody] GrantPermissionDto dto,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new GrantUserPermissionRequest(actorUserId, userId, dto.PermissionName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Explicitly revokes a permission from a user (overriding roles and groups).</summary>
+    [HttpPost("users/{userId}/permissions/revoke")]
+    [Authorize(Policy = AppPermissions.PermissionsManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokePermission(
+        [FromRoute] string userId,
+        [FromBody] RevokePermissionDto dto,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new RevokeUserPermissionRequest(actorUserId, userId, dto.PermissionName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Clears any direct grant or explicit revocation override for a permission on a user.</summary>
+    [HttpDelete("users/{userId}/permissions/{permissionName}")]
+    [Authorize(Policy = AppPermissions.PermissionsManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearPermission(
+        [FromRoute] string userId,
+        [FromRoute] string permissionName,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new ClearUserPermissionRequest(actorUserId, userId, permissionName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Assigns a user to a named permission group.</summary>
+    [HttpPost("users/{userId}/groups")]
+    [Authorize(Policy = AppPermissions.PermissionsManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignGroup(
+        [FromRoute] string userId,
+        [FromBody] AssignPermissionGroupDto dto,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new AssignUserPermissionGroupRequest(actorUserId, userId, dto.GroupName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
+            : BadRequest(result);
+    }
+
+    /// <summary>Removes a user from a named permission group.</summary>
+    [HttpDelete("users/{userId}/groups/{groupName}")]
+    [Authorize(Policy = AppPermissions.PermissionsManage)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ResponseBase<bool>>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveGroup(
+        [FromRoute] string userId,
+        [FromRoute] string groupName,
+        CancellationToken cancellationToken)
+    {
+        string? actorUserId = GetUserId();
+        if (actorUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(
+            new RemoveUserPermissionGroupRequest(actorUserId, userId, groupName),
+            cancellationToken);
+
+        if (!result.Success && result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound(result);
+        }
+
+        return result.Success
+            ? Ok(result)
             : BadRequest(result);
     }
 
