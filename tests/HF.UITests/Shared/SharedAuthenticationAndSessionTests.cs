@@ -23,9 +23,12 @@ using HF.Shared.Layout;
 using HF.Shared.Pages;
 using HF.Shared.Pages.Auth;
 using HF.Shared.Pages.Courses;
+using HF.Shared.Pages.Enrollments;
 using HF.Shared.Pages.Students;
 using HF.Shared.Pages.Subjects;
 using HF.Shared.Pages.Teachers;
+using HF.Shared.PageModels.Auth;
+using HF.UITests.Shared.Fakes;
 using Xunit;
 
 namespace HF.UITests.Shared;
@@ -56,6 +59,10 @@ public class SharedAuthenticationAndSessionTests
             typeof(TeacherCreate),
             typeof(TeacherDetails),
             typeof(TeacherEdit),
+            typeof(EnrollmentList),
+            typeof(EnrollmentCreate),
+            typeof(EnrollmentDetails),
+            typeof(EnrollmentEdit),
             typeof(ManageProfile),
             typeof(ManageRoles),
             typeof(ManagePermissions)
@@ -517,6 +524,98 @@ public class SharedAuthenticationAndSessionTests
 
         var kiotaAuthProvider = sp.GetRequiredService<Microsoft.Kiota.Abstractions.Authentication.IAuthenticationProvider>();
         Assert.IsType<KiotaAuthenticationProvider>(kiotaAuthProvider);
+    }
+
+    #endregion
+
+    #region 6. User Access, Dynamic Policy Provider & Login Flow Tests
+
+    [Fact]
+    public async Task HorizonAuthorizationPolicyProvider_DynamicallyGeneratesPolicy_RequiresPermissionOrAdmin()
+    {
+        var options = Microsoft.Extensions.Options.Options.Create(new AuthorizationOptions());
+        var policyProvider = new HorizonAuthorizationPolicyProvider(options);
+
+        var policy = await policyProvider.GetPolicyAsync("Enrollments.Create");
+        Assert.NotNull(policy);
+
+        // Evaluate requirement against User with permission claim
+        var userWithPermission = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("permission", "Enrollments.Create")
+        }, "TestAuth"));
+
+        // Evaluate requirement against User with Admin role
+        var userWithAdmin = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Role, "Admin")
+        }, "TestAuth"));
+
+        // Evaluate requirement against unprivileged user
+        var unprivilegedUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Role, "Student")
+        }, "TestAuth"));
+
+        var assertionReq = Assert.Single(policy.Requirements.OfType<Microsoft.AspNetCore.Authorization.Infrastructure.AssertionRequirement>());
+
+        var successContext = new AuthorizationHandlerContext(new[] { assertionReq }, userWithPermission, null);
+        var successResult = await assertionReq.Handler(successContext);
+        Assert.True(successResult);
+
+        var adminContext = new AuthorizationHandlerContext(new[] { assertionReq }, userWithAdmin, null);
+        var adminResult = await assertionReq.Handler(adminContext);
+        Assert.True(adminResult);
+
+        var failureContext = new AuthorizationHandlerContext(new[] { assertionReq }, unprivilegedUser, null);
+        var failureResult = await assertionReq.Handler(failureContext);
+        Assert.False(failureResult);
+    }
+
+    [Fact]
+    public async Task UserAccessService_LoadsAndCachesAccess_AndClearsSessionOn401()
+    {
+        var fakeAuth = new FakeAuthService();
+        var tokenStore = new InMemoryTokenStore();
+        await tokenStore.SaveTokensAsync("valid-token", "valid-refresh");
+
+        var userAccess = new UserAccessService(fakeAuth, tokenStore);
+
+        // 1. Initial refresh success
+        var success = await userAccess.LoadCurrentAccessAsync();
+        Assert.True(success);
+        Assert.Contains("Teacher", userAccess.CurrentRoles);
+        Assert.Contains("Enrollments.Read", userAccess.CurrentPolicies);
+
+        // 2. Refresh fails with 401 Unauthorized -> must clear session & cache
+        fakeAuth.ShouldSucceed = false;
+        fakeAuth.FailureStatusCode = 401;
+
+        var fail401 = await userAccess.LoadCurrentAccessAsync();
+        Assert.False(fail401);
+        Assert.Empty(userAccess.CurrentRoles);
+        Assert.Empty(userAccess.CurrentPolicies);
+        Assert.Null(await tokenStore.GetAccessTokenAsync());
+        Assert.Null(await tokenStore.GetRefreshTokenAsync());
+    }
+
+    [Fact]
+    public async Task LoginPageModel_LoginAsync_ReentrancyGuard_PreventsDoubleSubmission()
+    {
+        var fakeAuth = new FakeAuthService();
+        var tokenStore = new InMemoryTokenStore();
+        var userAccess = new UserAccessService(fakeAuth, tokenStore);
+        var model = new LoginPageModel(fakeAuth, userAccess)
+        {
+            Email = "test@horizon.org",
+            Password = "Password123!"
+        };
+
+        // When IsBusy is true (first submission in flight), subsequent call must immediately return false
+        model.IsBusy = true;
+        var result = await model.LoginAsync();
+
+        Assert.False(result);
     }
 
     #endregion

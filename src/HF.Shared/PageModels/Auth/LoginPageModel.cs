@@ -1,3 +1,6 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using HF.Shared.Auth;
 using HF.Shared.Auth.Models;
@@ -7,6 +10,7 @@ namespace HF.Shared.PageModels.Auth;
 public partial class LoginPageModel : PageModelBase
 {
     private readonly IAuthService _authService;
+    private readonly IUserAccessService? _userAccessService;
 
     [ObservableProperty]
     public partial string Email { get; set; } = string.Empty;
@@ -33,13 +37,24 @@ public partial class LoginPageModel : PageModelBase
     public partial bool IsLoggedIn { get; set; } = false;
 
     public LoginPageModel(IAuthService authService)
+        : this(authService, null)
     {
-        _authService = authService;
+    }
+
+    public LoginPageModel(IAuthService authService, IUserAccessService? userAccessService)
+    {
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _userAccessService = userAccessService;
         Title = "Entrar no Horizon";
     }
 
     public async Task<bool> LoginAsync(CancellationToken ct = default)
     {
+        if (IsBusy)
+        {
+            return false;
+        }
+
         ErrorMessage = null;
         SuccessMessage = null;
 
@@ -63,6 +78,11 @@ public partial class LoginPageModel : PageModelBase
 
             if (result.Succeeded)
             {
+                if (_userAccessService != null)
+                {
+                    await _userAccessService.LoadCurrentAccessAsync(ct);
+                }
+
                 IsLoggedIn = true;
                 SuccessMessage = "Autenticação realizada com sucesso!";
                 return true;
@@ -90,4 +110,3 @@ public partial class LoginPageModel : PageModelBase
         }
     }
 }
-

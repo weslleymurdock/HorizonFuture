@@ -1,28 +1,84 @@
+@using HF.Shared.Auth
+
 <MudNavMenu>
     <AuthorizeView>
         <Authorized>
             <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
 
             <MudNavGroup Title="Acadêmico" Icon="@Icons.Material.Filled.School" Expanded="true">
-                <MudNavLink Href="/courses" Icon="@Icons.Material.Filled.MenuBook">Cursos</MudNavLink>
-                <MudNavLink Href="/courses/create" Icon="@Icons.Material.Filled.AddCircleOutline">Novo Curso</MudNavLink>
-                <MudNavLink Href="/subjects" Icon="@Icons.Material.Filled.Subject">Disciplinas</MudNavLink>
-                <MudNavLink Href="/subjects/create" Icon="@Icons.Material.Filled.PostAdd">Nova Disciplina</MudNavLink>
-                <MudNavLink Href="/students" Icon="@Icons.Material.Filled.People">Alunos</MudNavLink>
-                <MudNavLink Href="/students/create" Icon="@Icons.Material.Filled.PersonAddAlt1">Novo Aluno</MudNavLink>
-                <MudNavLink Href="/teachers" Icon="@Icons.Material.Filled.Person">Professores</MudNavLink>
-                <MudNavLink Href="/teachers/create" Icon="@Icons.Material.Filled.PersonAdd">Novo Professor</MudNavLink>
+                <AuthorizeView Policy="@AppPolicies.CoursesRead" Context="courseReadCtx">
+                    <Authorized>
+                        <MudNavLink Href="/courses" Icon="@Icons.Material.Filled.MenuBook">Cursos</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Policy="@AppPolicies.CoursesCreate" Context="courseCreateCtx">
+                    <Authorized>
+                        <MudNavLink Href="/courses/create" Icon="@Icons.Material.Filled.AddCircleOutline">Novo Curso</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@AppPolicies.SubjectsRead" Context="subjReadCtx">
+                    <Authorized>
+                        <MudNavLink Href="/subjects" Icon="@Icons.Material.Filled.Subject">Disciplinas</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Policy="@AppPolicies.SubjectsCreate" Context="subjCreateCtx">
+                    <Authorized>
+                        <MudNavLink Href="/subjects/create" Icon="@Icons.Material.Filled.PostAdd">Nova Disciplina</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@AppPolicies.StudentsRead" Context="studReadCtx">
+                    <Authorized>
+                        <MudNavLink Href="/students" Icon="@Icons.Material.Filled.People">Alunos</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Policy="@AppPolicies.StudentsCreate" Context="studCreateCtx">
+                    <Authorized>
+                        <MudNavLink Href="/students/create" Icon="@Icons.Material.Filled.PersonAddAlt1">Novo Aluno</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@AppPolicies.TeachersRead" Context="teachReadCtx">
+                    <Authorized>
+                        <MudNavLink Href="/teachers" Icon="@Icons.Material.Filled.Person">Professores</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Policy="@AppPolicies.TeachersCreate" Context="teachCreateCtx">
+                    <Authorized>
+                        <MudNavLink Href="/teachers/create" Icon="@Icons.Material.Filled.PersonAdd">Novo Professor</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@AppPolicies.EnrollmentsRead" Context="enrollReadCtx">
+                    <Authorized>
+                        <MudNavLink Href="/enrollments" Icon="@Icons.Material.Filled.AssignmentInd">Matrículas</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Policy="@AppPolicies.EnrollmentsCreate" Context="enrollCreateCtx">
+                    <Authorized>
+                        <MudNavLink Href="/enrollments/create" Icon="@Icons.Material.Filled.AddModerator">Nova Matrícula</MudNavLink>
+                    </Authorized>
+                </AuthorizeView>
             </MudNavGroup>
 
             <MudNavGroup Title="Minha Conta" Icon="@Icons.Material.Filled.AccountCircle" Expanded="true">
                 <MudNavLink Href="/auth/manage" Icon="@Icons.Material.Filled.ManageAccounts">Meu Perfil / 2FA</MudNavLink>
             </MudNavGroup>
 
-            <AuthorizeView Roles="Admin,Manager" Context="adminContext">
+            <AuthorizeView Roles="Admin,Manager,Director,Coordinator" Context="adminContext">
                 <Authorized>
                     <MudNavGroup Title="Administração" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
-                        <MudNavLink Href="/auth/manage-roles" Icon="@Icons.Material.Filled.Security">Roles</MudNavLink>
-                        <MudNavLink Href="/auth/manage-permissions" Icon="@Icons.Material.Filled.VerifiedUser">Permissões e Grupos</MudNavLink>
+                        <AuthorizeView Policy="@AppPolicies.RolesRead" Context="rolesCtx">
+                            <Authorized>
+                                <MudNavLink Href="/auth/manage-roles" Icon="@Icons.Material.Filled.Security">Roles</MudNavLink>
+                            </Authorized>
+                        </AuthorizeView>
+                        <AuthorizeView Policy="@AppPolicies.PermissionsRead" Context="permCtx">
+                            <Authorized>
+                                <MudNavLink Href="/auth/manage-permissions" Icon="@Icons.Material.Filled.VerifiedUser">Permissões e Grupos</MudNavLink>
+                            </Authorized>
+                        </AuthorizeView>
                     </MudNavGroup>
                 </Authorized>
             </AuthorizeView>

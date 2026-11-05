@@ -602,5 +602,43 @@ public sealed class IdentityAdminService(
 
         return ResponseBase<bool>.SuccessResponse(true, $"Permission group '{groupName}' removed successfully.");
     }
+
+    /// <inheritdoc />
+    public async Task<ResponseBase<UserAccessResponse>> GetUserAccessAsync(string targetUserId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var target = await userManager.FindByIdAsync(targetUserId);
+        if (target is null)
+        {
+            return ResponseBase<UserAccessResponse>.FailureResponse("User not found.");
+        }
+
+        var roles = await userManager.GetRolesAsync(target);
+        var claims = await userManager.GetClaimsAsync(target);
+
+        var directGrants = claims
+            .Where(c => c.Type == AppClaimTypes.Permission)
+            .Select(c => c.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var explicitRevocations = claims
+            .Where(c => c.Type == AppClaimTypes.RevokedPermission)
+            .Select(c => c.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var assignedGroups = claims
+            .Where(c => c.Type == AppClaimTypes.PermissionGroup)
+            .Select(c => c.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var effective = RolePermissionCatalog.GetEffectivePermissions(roles, directGrants, explicitRevocations, assignedGroups);
+
+        return ResponseBase<UserAccessResponse>.SuccessResponse(
+            new UserAccessResponse(roles.ToList(), effective));
+    }
 }
 

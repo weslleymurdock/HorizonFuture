@@ -41,5 +41,8 @@ public interface IIdentityAdminService
 
     /// <summary>Removes a target user from a permission group.</summary>
     Task<ResponseBase<bool>> RemovePermissionGroupAsync(string actorUserId, string targetUserId, string groupName, CancellationToken cancellationToken);
+
+    /// <summary>Gets the assigned roles and effective policies for an authenticated user.</summary>
+    Task<ResponseBase<UserAccessResponse>> GetUserAccessAsync(string targetUserId, CancellationToken cancellationToken);
 }
 

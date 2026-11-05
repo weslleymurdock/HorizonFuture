@@ -2,6 +2,7 @@
 @attribute [AllowAnonymous]
 @inject LoginPageModel PageModel
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>@PageModel.Title</PageTitle>
 
@@ -92,7 +93,6 @@
                            Size="Size.Large"
                            Class="mt-2 login-submit-btn"
                            ButtonType="ButtonType.Submit"
-                           OnClick="SubmitAsync"
                            Disabled="@PageModel.IsBusy">
                     @if (PageModel.IsBusy)
                     {
@@ -123,17 +123,31 @@
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            var destination = IsSafeLocalUrl(ReturnUrl) ? ReturnUrl! : "/courses";
+            Navigation.NavigateTo(destination, replace: true);
+        }
     }
 
     private async Task SubmitAsync()
     {
+        if (PageModel.IsBusy)
+        {
+            return;
+        }
+
         var success = await PageModel.LoginAsync();
         if (success)
         {
-            var destination = !string.IsNullOrWhiteSpace(ReturnUrl) ? ReturnUrl : "/courses";
+            // Await confirmation of authenticated state before navigating
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var destination = IsSafeLocalUrl(ReturnUrl) ? ReturnUrl! : "/courses";
             Navigation.NavigateTo(destination, replace: true);
         }
         else
@@ -141,5 +155,31 @@
             await InvokeAsync(StateHasChanged);
         }
     }
-}
 
+    private static bool IsSafeLocalUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        if (!url.StartsWith('/') || url.StartsWith("//") || url.StartsWith("/\\"))
+        {
+            return false;
+        }
+
+        var queryIdx = url.IndexOf('?');
+        var path = queryIdx >= 0 ? url[..queryIdx] : url;
+        if (path.Contains(':'))
+        {
+            return false;
+        }
+
+        if (path.StartsWith("/auth/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return true;
+    }
+}

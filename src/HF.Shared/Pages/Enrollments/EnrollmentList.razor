@@ -1,0 +1,325 @@
+@page "/enrollments"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = AppPolicies.EnrollmentsRead)]
+@inject EnrollmentListPageModel PageModel
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-8">
+    <div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-6">
+        <div>
+            <MudText Typo="Typo.h4" GutterBottom="true">Matrículas</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Gerenciamento de matrículas de estudantes em disciplinas pedagógicas.
+            </MudText>
+        </div>
+        <AuthorizeView Policy="@AppPolicies.EnrollmentsCreate">
+            <Authorized>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => Navigation.NavigateTo("/enrollments/create"))"
+                           aria-label="Cadastrar Nova Matrícula">
+                    Nova Matrícula
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    @if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+            Acesso negado: seu perfil não possui a permissão necessária para visualizar a lista de matrículas (Enrollments.Read).
+        </MudAlert>
+    }
+
+    @if (PageModel.IsUnauthorized)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+            Sua sessão expirou ou você não está autenticado. Faça login para acessar esta funcionalidade.
+        </MudAlert>
+    }
+
+    <!-- Barra de Filtros e Busca -->
+    <MudCard Elevation="2" Class="pa-4 mb-6">
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField T="string"
+                              Label="Buscar matrícula"
+                              @bind-Value="PageModel.SearchText"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Clearable="true"
+                              aria-label="Filtrar matrículas por texto" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudTextField T="string"
+                              Label="ID Estudante"
+                              @bind-Value="PageModel.StudentIdFilter"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              aria-label="Filtrar matrículas por ID do Estudante" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudTextField T="string"
+                              Label="ID Disciplina"
+                              @bind-Value="PageModel.SubjectIdFilter"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              aria-label="Filtrar matrículas por ID da Disciplina" />
+            </MudItem>
+
+            <MudItem xs="6" sm="3" md="1">
+                <MudNumericField T="int?"
+                                 Label="Ano"
+                                 @bind-Value="PageModel.AcademicYearFilter"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Clearable="true"
+                                 Min="2000"
+                                 Max="2100"
+                                 aria-label="Filtrar por ano letivo" />
+            </MudItem>
+
+            <MudItem xs="6" sm="3" md="1">
+                <MudNumericField T="int?"
+                                 Label="Semestre"
+                                 @bind-Value="PageModel.AcademicSemesterFilter"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Clearable="true"
+                                 Min="1"
+                                 Max="4"
+                                 aria-label="Filtrar por semestre letivo" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="EnrollmentStatus?"
+                           Label="Status"
+                           @bind-Value="PageModel.StatusFilter"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Clearable="true"
+                           aria-label="Filtrar matrículas por status">
+                    <MudSelectItem T="EnrollmentStatus?" Value="@((EnrollmentStatus?)null)">Todos os Status</MudSelectItem>
+                    <MudSelectItem T="EnrollmentStatus?" Value="@((EnrollmentStatus?)EnrollmentStatus.Active)">Ativa</MudSelectItem>
+                    <MudSelectItem T="EnrollmentStatus?" Value="@((EnrollmentStatus?)EnrollmentStatus.Locked)">Trancada</MudSelectItem>
+                    <MudSelectItem T="EnrollmentStatus?" Value="@((EnrollmentStatus?)EnrollmentStatus.Completed)">Concluída</MudSelectItem>
+                    <MudSelectItem T="EnrollmentStatus?" Value="@((EnrollmentStatus?)EnrollmentStatus.Cancelled)">Cancelada</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="1" Class="d-flex gap-2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           OnClick="() => PageModel.LoadEnrollmentsAsync()"
+                           Disabled="@PageModel.IsBusy"
+                           aria-label="Aplicar filtros de matrículas">
+                    @if (PageModel.IsBusy)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <span>Filtrar</span>
+                    }
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCard>
+
+    <!-- Tabela de Matrículas -->
+    <MudTable Items="PageModel.FilteredEnrollments"
+              Dense="true"
+              Hover="true"
+              Striped="true"
+              Elevation="3"
+              Loading="@PageModel.IsBusy"
+              Class="mb-4">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.Id)">ID</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.StudentId)">Aluno</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.SubjectId)">Disciplina</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.AcademicYear)">Ano / Semestre</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.EnrollmentDate)">Data Matrícula</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.FinalGrade ?? -1)">Nota Final</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<EnrollmentItemDto, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+            <MudTh Style="text-align: right;">Ações</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="ID">
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                    @(context.Id.Length > 8 ? context.Id[..8] + "..." : context.Id)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Aluno">
+                <MudText Typo="Typo.body2">@context.StudentId</MudText>
+            </MudTd>
+            <MudTd DataLabel="Disciplina">
+                <MudText Typo="Typo.body2">@context.SubjectId</MudText>
+            </MudTd>
+            <MudTd DataLabel="Ano / Semestre">
+                @($"{context.AcademicYear} / {context.AcademicSemester}º Semestre")
+            </MudTd>
+            <MudTd DataLabel="Data Matrícula">
+                @context.EnrollmentDate.ToString("dd/MM/yyyy")
+            </MudTd>
+            <MudTd DataLabel="Nota Final">
+                @(context.FinalGrade.HasValue ? context.FinalGrade.Value.ToString("F1") : "-")
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)" Variant="Variant.Filled">
+                    @GetStatusLabel(context.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Ações" Style="text-align: right;">
+                <div class="d-flex justify-end gap-1">
+                    <MudTooltip Text="Visualizar detalhes">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Size="Size.Small"
+                                       Color="Color.Info"
+                                       aria-label="@($"Visualizar detalhes da matrícula {context.Id}")"
+                                       OnClick="@(() => Navigation.NavigateTo($"/enrollments/{context.Id}"))" />
+                    </MudTooltip>
+
+                    <AuthorizeView Policy="@AppPolicies.EnrollmentsUpdate">
+                        <Authorized Context="editAuth">
+                            <MudTooltip Text="Editar matrícula">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               aria-label="@($"Editar matrícula {context.Id}")"
+                                               OnClick="@(() => Navigation.NavigateTo($"/enrollments/{context.Id}/edit"))" />
+                            </MudTooltip>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Policy="@AppPolicies.EnrollmentsDelete">
+                        <Authorized Context="deleteAuth">
+                            <MudTooltip Text="Excluir matrícula">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@(PageModel.IsDeleting && PageModel.DeletingEnrollmentId == context.Id)"
+                                               aria-label="@($"Excluir matrícula {context.Id}")"
+                                               OnClick="@(() => ConfirmDeleteAsync(context))" />
+                            </MudTooltip>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <div class="pa-8 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" GutterBottom="true">
+                    Nenhuma matrícula encontrada
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Não há matrículas cadastradas com os critérios informados.
+                </MudText>
+                <AuthorizeView Policy="@AppPolicies.EnrollmentsCreate">
+                    <Authorized>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="@(() => Navigation.NavigateTo("/enrollments/create"))">
+                            Cadastrar Primeira Matrícula
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </NoRecordsContent>
+
+        <LoadingContent>
+            <div class="pa-8 text-center">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="mb-2" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Carregando matrículas...</MudText>
+            </div>
+        </LoadingContent>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }"
+                           RowsPerPageString="Linhas por página:"
+                           InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        await PageModel.LoadEnrollmentsAsync();
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task ConfirmDeleteAsync(EnrollmentItemDto enrollment)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão",
+            $"Deseja realmente excluir a matrícula do estudante '{enrollment.StudentId}' na disciplina '{enrollment.SubjectId}'? Esta operação é irreversível.",
+            yesText: "Excluir Matrícula",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.DeleteEnrollmentAsync(enrollment.Id);
+        }
+    }
+
+    private static Color GetStatusColor(EnrollmentStatus status) => status switch
+    {
+        EnrollmentStatus.Active => Color.Success,
+        EnrollmentStatus.Locked => Color.Warning,
+        EnrollmentStatus.Completed => Color.Info,
+        EnrollmentStatus.Cancelled => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(EnrollmentStatus status) => status switch
+    {
+        EnrollmentStatus.Active => "Ativa",
+        EnrollmentStatus.Locked => "Trancada",
+        EnrollmentStatus.Completed => "Concluída",
+        EnrollmentStatus.Cancelled => "Cancelada",
+        _ => status.ToString()
+    };
+}
+

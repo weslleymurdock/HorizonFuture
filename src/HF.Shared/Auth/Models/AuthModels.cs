@@ -91,6 +91,11 @@ public sealed record UserPermissionsDto(
     IReadOnlyList<string> ExplicitRevocations,
     IReadOnlyList<string> AssignedGroups);
 
+/// <summary>Roles e policies efetivas do usuário autenticado atual.</summary>
+public sealed record UserAccessDto(
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Policies);
+
 /// <summary>Envelope genérico de resposta da API.</summary>
 public sealed record ApiResponseEnvelope<T>(
     T? Value,

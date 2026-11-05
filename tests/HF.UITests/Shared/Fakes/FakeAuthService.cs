@@ -12,6 +12,7 @@ public class FakeAuthService : IAuthService
 {
     public bool ShouldSucceed { get; set; } = true;
     public string FailureMessage { get; set; } = "Operação simulada com falha";
+    public int? FailureStatusCode { get; set; } = 400;
     public List<string> FailureErrors { get; set; } = new() { "Erro 1", "Erro 2" };
 
     public TokenResponseDto MockTokenResponse { get; set; } = new(
@@ -262,5 +263,19 @@ public class FakeAuthService : IAuthService
         }
         return Task.FromResult(AuthResult<bool>.Fail(FailureMessage, statusCode: 400));
     }
+
+    public List<string> MockUserPolicies { get; set; } = new() { "Courses.Read", "Subjects.Read", "Students.Read", "Enrollments.Read" };
+
+    public Task<AuthResult<UserAccessDto>> GetCurrentUserAccessAsync(CancellationToken ct = default)
+    {
+        if (ShouldSucceed)
+        {
+            return Task.FromResult(AuthResult<UserAccessDto>.Ok(
+                new UserAccessDto(MockUserRoles, MockUserPolicies),
+                "Acesso obtido com sucesso"));
+        }
+        return Task.FromResult(AuthResult<UserAccessDto>.Fail(FailureMessage, statusCode: FailureStatusCode ?? 400));
+    }
 }
+
 

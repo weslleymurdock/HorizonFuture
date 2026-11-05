@@ -1,0 +1,267 @@
+@page "/enrollments/create"
+@using Microsoft.AspNetCore.Authorization
+@using HF.Shared.Enrollments.Models
+@using HF.Shared.Students.Models
+@using HF.Shared.Subjects.Models
+@attribute [Authorize(Policy = AppPolicies.EnrollmentsCreate)]
+@inject EnrollmentCreatePageModel PageModel
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Default"
+               Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/enrollments"))"
+               aria-label="Voltar para a lista de matrículas">
+        Voltar para Matrículas
+    </MudButton>
+
+    <MudCard Elevation="4" Class="pa-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" GutterBottom="true">Cadastrar Nova Matrícula</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Vincule um estudante a uma disciplina acadêmica definindo ano, semestre e status.
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                    @PageModel.ErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.DependenciesErrorMessage))
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+                    @PageModel.DependenciesErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                    <div class="d-flex flex-column gap-2">
+                        <span>@PageModel.SuccessMessage</span>
+                        <div class="d-flex gap-2 mt-2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Inherit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => Navigation.NavigateTo("/enrollments"))">
+                                Ver Lista de Matrículas
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Inherit"
+                                       Size="Size.Small"
+                                       OnClick="ResetForm">
+                                Cadastrar Outra Matrícula
+                            </MudButton>
+                        </div>
+                    </div>
+                </MudAlert>
+            }
+
+            @if (PageModel.IsForbidden)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+                    Acesso negado: seu perfil não possui a permissão necessária para criar matrículas (Enrollments.Create).
+                </MudAlert>
+            }
+
+            @if (PageModel.IsLoadingDependencies)
+            {
+                <div class="pa-6 text-center">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" Class="mb-2" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Carregando estudantes e disciplinas...</MudText>
+                </div>
+            }
+            else
+            {
+                <MudForm @onsubmit="HandleSubmitAsync">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string"
+                                       Label="Estudante"
+                                       @bind-Value="PageModel.StudentId"
+                                       Required="true"
+                                       RequiredError="Selecione um estudante"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Disabled="@PageModel.IsBusy"
+                                       HelperText="Estudante a ser matriculado"
+                                       aria-label="Seleção de estudante">
+                                <MudSelectItem T="string" Value="@(string.Empty)">Selecione...</MudSelectItem>
+                                @foreach (var student in PageModel.AvailableStudents)
+                                {
+                                    <MudSelectItem T="string" Value="@student.Id">
+                                        Matrícula: @student.RegistrationNumber @(!string.IsNullOrWhiteSpace(student.GuardianName) ? $"({student.GuardianName})" : "")
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string"
+                                       Label="Disciplina (Subject)"
+                                       @bind-Value="PageModel.SubjectId"
+                                       Required="true"
+                                       RequiredError="Selecione uma disciplina"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Disabled="@PageModel.IsBusy"
+                                       HelperText="Disciplina da matrícula"
+                                       aria-label="Seleção de disciplina">
+                                <MudSelectItem T="string" Value="@(string.Empty)">Selecione...</MudSelectItem>
+                                @foreach (var subject in PageModel.AvailableSubjects)
+                                {
+                                    <MudSelectItem T="string" Value="@subject.Id">
+                                        @subject.Name (@subject.Code)
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudNumericField T="int"
+                                             Label="Ano Letivo"
+                                             @bind-Value="PageModel.AcademicYear"
+                                             Min="2000"
+                                             Max="2100"
+                                             Required="true"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Disabled="@PageModel.IsBusy"
+                                             aria-label="Ano letivo" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudNumericField T="int"
+                                             Label="Semestre Letivo"
+                                             @bind-Value="PageModel.AcademicSemester"
+                                             Min="1"
+                                             Max="4"
+                                             Required="true"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Disabled="@PageModel.IsBusy"
+                                             aria-label="Semestre letivo" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudSelect T="EnrollmentStatus"
+                                       Label="Status da Matrícula"
+                                       @bind-Value="PageModel.Status"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Status da matrícula">
+                                <MudSelectItem T="EnrollmentStatus" Value="EnrollmentStatus.Active">Ativa</MudSelectItem>
+                                <MudSelectItem T="EnrollmentStatus" Value="EnrollmentStatus.Locked">Trancada</MudSelectItem>
+                                <MudSelectItem T="EnrollmentStatus" Value="EnrollmentStatus.Completed">Concluída</MudSelectItem>
+                                <MudSelectItem T="EnrollmentStatus" Value="EnrollmentStatus.Cancelled">Cancelada</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="6">
+                            <MudDatePicker Label="Data da Matrícula"
+                                           @bind-Date="PageModel.EnrollmentDate"
+                                           DateFormat="dd/MM/yyyy"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Disabled="@PageModel.IsBusy"
+                                           aria-label="Data da matrícula" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="6">
+                            <MudNumericField T="decimal?"
+                                             Label="Nota Final (opcional)"
+                                             @bind-Value="PageModel.FinalGrade"
+                                             Min="0"
+                                             Max="10"
+                                             Step="0.1M"
+                                             Format="N1"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             HelperText="De 0,0 a 10,0"
+                                             Disabled="@PageModel.IsBusy"
+                                             aria-label="Nota final" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <div class="d-flex justify-end gap-2 mt-6">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   OnClick="@(() => Navigation.NavigateTo("/enrollments"))"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Cancelar cadastro">
+                            Cancelar
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   ButtonType="ButtonType.Submit"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Salvar matrícula">
+                            @if (PageModel.IsBusy)
+                            {
+                                <MudProgressCircular Class="ms-n1 me-1" Size="Size.Small" Indeterminate="true" />
+                                <span>Salvando...</span>
+                            }
+                            else
+                            {
+                                <span>Cadastrar Matrícula</span>
+                            }
+                        </MudButton>
+                    </div>
+                </MudForm>
+            }
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        await PageModel.LoadDependenciesAsync();
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        var success = await PageModel.CreateEnrollmentAsync();
+        if (success)
+        {
+            // Successfully created
+        }
+    }
+
+    private void ResetForm()
+    {
+        PageModel.StudentId = string.Empty;
+        PageModel.SubjectId = string.Empty;
+        PageModel.AcademicYear = DateTime.UtcNow.Year;
+        PageModel.AcademicSemester = 1;
+        PageModel.EnrollmentDate = DateTime.UtcNow.Date;
+        PageModel.Status = EnrollmentStatus.Active;
+        PageModel.FinalGrade = null;
+        PageModel.SuccessMessage = null;
+        PageModel.ErrorMessage = null;
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+}

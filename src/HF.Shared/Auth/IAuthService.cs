@@ -72,5 +72,8 @@ public interface IAuthService
 
     // 22. DELETE api/v1/auth/users/{userId}/groups/{groupName}
     Task<AuthResult<bool>> RemoveUserPermissionGroupAsync(string userId, string groupName, CancellationToken ct = default);
+
+    // 23. GET api/v1/auth/access
+    Task<AuthResult<UserAccessDto>> GetCurrentUserAccessAsync(CancellationToken ct = default);
 }
 

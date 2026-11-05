@@ -1,6 +1,6 @@
 @page "/students/create"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.StudentsCreate)]
 @inject StudentCreatePageModel PageModel
 @inject NavigationManager Navigation
 @implements IDisposable

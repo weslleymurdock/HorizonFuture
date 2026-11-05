@@ -1,5 +1,5 @@
 @page "/auth/manage-roles"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.RolesRead)]
 @inject ManageRolesPageModel PageModel
 @inject IDialogService DialogService
 

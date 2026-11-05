@@ -1,6 +1,6 @@
 @page "/students"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.StudentsRead)]
 @inject StudentListPageModel PageModel
 @inject NavigationManager Navigation
 @inject IDialogService DialogService

@@ -266,6 +266,26 @@ public class AuthController(IMediator mediator) : ControllerBase
             : BadRequest(result);
     }
 
+    /// <summary>Gets the assigned roles and effective policies for the current authenticated user.</summary>
+    [HttpGet("access")]
+    [Authorize]
+    [ProducesResponseType<ResponseBase<UserAccessResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ResponseBase<UserAccessResponse>>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCurrentUserAccess(CancellationToken cancellationToken)
+    {
+        string? userId = GetUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await mediator.Send(new GetCurrentUserAccessRequest(userId), cancellationToken);
+        return result.Success
+            ? Ok(result)
+            : NotFound(result);
+    }
+
     /// <summary>Lists all roles in the catalog with hierarchy rank.</summary>
     [HttpGet("roles")]
     [Authorize(Policy = AppPermissions.RolesRead)]

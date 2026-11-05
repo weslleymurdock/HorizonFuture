@@ -21,3 +21,8 @@ public sealed record UserPermissionsResponse(
     IReadOnlyList<string> ExplicitRevocations,
     IReadOnlyList<string> AssignedGroups);
 
+/// <summary>Effective roles and policies for the current authenticated user.</summary>
+public sealed record UserAccessResponse(
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<string> Policies);
+

@@ -1,6 +1,6 @@
 @page "/students/{Id}/edit"
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.StudentsUpdate)]
 @inject StudentEditPageModel PageModel
 @inject NavigationManager Navigation
 @implements IDisposable

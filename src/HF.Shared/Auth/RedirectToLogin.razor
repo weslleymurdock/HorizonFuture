@@ -7,11 +7,15 @@
     protected override void OnInitialized()
     {
         var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
-        var loginUrl = string.IsNullOrWhiteSpace(currentUri) || currentUri == "/"
+        var targetPath = !string.IsNullOrWhiteSpace(currentUri) && !currentUri.StartsWith("/")
+            ? $"/{currentUri}"
+            : currentUri;
+
+        // Ensure target is not already login to avoid redirection loop
+        var loginUrl = string.IsNullOrWhiteSpace(targetPath) || targetPath == "/" || targetPath.StartsWith("/auth/login", StringComparison.OrdinalIgnoreCase)
             ? "/auth/login"
-            : $"/auth/login?returnUrl={Uri.EscapeDataString(currentUri)}";
+            : $"/auth/login?returnUrl={Uri.EscapeDataString(targetPath)}";
 
         Navigation.NavigateTo(loginUrl, replace: true);
     }
 }
-

@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,12 +14,14 @@ using HF.Shared.Courses;
 using HF.Shared.Subjects;
 using HF.Shared.Students;
 using HF.Shared.Teachers;
+using HF.Shared.Enrollments;
 using HF.Shared.PageModels;
 using HF.Shared.PageModels.Auth;
 using HF.Shared.PageModels.Courses;
 using HF.Shared.PageModels.Subjects;
 using HF.Shared.PageModels.Students;
 using HF.Shared.PageModels.Teachers;
+using HF.Shared.PageModels.Enrollments;
 
 namespace HF.Shared;
 
@@ -69,13 +72,21 @@ public static class ServiceCollectionExtensions
             services.AddScoped<TeacherDetailsPageModel>();
             services.AddScoped<TeacherEditPageModel>();
 
+            // Enrollments PageModels
+            services.AddScoped<EnrollmentListPageModel>();
+            services.AddScoped<EnrollmentCreatePageModel>();
+            services.AddScoped<EnrollmentDetailsPageModel>();
+            services.AddScoped<EnrollmentEditPageModel>();
+
             return services;
         }
 
         public IServiceCollection AddHorizonClient(string? customBaseUrl = null)
         {
             services.AddAuthorizationCore();
+            services.TryAddSingleton<IAuthorizationPolicyProvider, HorizonAuthorizationPolicyProvider>();
             services.TryAddScoped<ITokenStore, InMemoryTokenStore>();
+            services.TryAddScoped<IUserAccessService, UserAccessService>();
             services.TryAddScoped<AuthenticationStateProvider, HorizonAuthenticationStateProvider>();
             services.TryAddScoped<HorizonAuthenticationStateProvider>(sp => (HorizonAuthenticationStateProvider)sp.GetRequiredService<AuthenticationStateProvider>());
 
@@ -141,6 +152,7 @@ public static class ServiceCollectionExtensions
             services.TryAddScoped<ISubjectService, SubjectService>();
             services.TryAddScoped<IStudentService, StudentService>();
             services.TryAddScoped<ITeacherService, TeacherService>();
+            services.TryAddScoped<IEnrollmentService, EnrollmentService>();
 
             return services;
         }

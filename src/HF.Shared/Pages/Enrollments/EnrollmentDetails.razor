@@ -1,0 +1,309 @@
+@page "/enrollments/{Id}"
+@using Microsoft.AspNetCore.Authorization
+@using HF.Shared.Enrollments
+@using HF.Shared.Enrollments.Models
+@attribute [Authorize(Policy = AppPolicies.EnrollmentsRead)]
+@inject EnrollmentDetailsPageModel PageModel
+@inject IEnrollmentService EnrollmentService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Default"
+               Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/enrollments"))"
+               aria-label="Voltar para a lista de matrículas">
+        Voltar para Matrículas
+    </MudButton>
+
+    @if (PageModel.IsBusy)
+    {
+        <div class="pa-12 text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Carregando detalhes da matrícula...</MudText>
+        </div>
+    }
+    else if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
+            Acesso negado: você não tem permissão para visualizar esta matrícula (Enrollments.Read).
+        </MudAlert>
+    }
+    else if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage) && PageModel.Enrollment is null)
+    {
+        <MudCard Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Não Foi Possível Carregar a Matrícula</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                @PageModel.ErrorMessage
+            </MudText>
+            <div class="d-flex justify-center gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => PageModel.LoadDetailsAsync(Id))">
+                    Tentar Novamente
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.List"
+                           OnClick="@(() => Navigation.NavigateTo("/enrollments"))">
+                    Ver Matrículas
+                </MudButton>
+            </div>
+        </MudCard>
+    }
+    else if (PageModel.Enrollment is not null)
+    {
+        var item = PageModel.Enrollment;
+
+        <div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-4">
+            <div>
+                <div class="d-flex align-center gap-2 mb-1">
+                    <MudText Typo="Typo.h5">Matrícula</MudText>
+                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(item.Status)" Variant="Variant.Filled">
+                        @GetStatusLabel(item.Status)
+                    </MudChip>
+                </div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @item.Id</MudText>
+            </div>
+
+            <div class="d-flex gap-2">
+                <AuthorizeView Policy="@AppPolicies.EnrollmentsUpdate">
+                    <Authorized>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => Navigation.NavigateTo($"/enrollments/{item.Id}/edit"))"
+                                   aria-label="Editar matrícula">
+                            Editar
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+
+                <AuthorizeView Policy="@AppPolicies.EnrollmentsDelete">
+                    <Authorized>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="@ConfirmDeleteAsync"
+                                   aria-label="Excluir matrícula">
+                            Excluir
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        <MudGrid Spacing="3">
+            <!-- Dados da Matrícula -->
+            <MudItem xs="12">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Informações Acadêmicas</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Ano Letivo</MudText>
+                                <MudText Typo="Typo.body1">@item.AcademicYear</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Semestre Letivo</MudText>
+                                <MudText Typo="Typo.body1">@item.AcademicSemester º Semestre</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Data da Matrícula</MudText>
+                                <MudText Typo="Typo.body1">@item.EnrollmentDate.ToString("dd/MM/yyyy")</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Nota Final</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @(item.FinalGrade.HasValue ? item.FinalGrade.Value.ToString("N1") : "Sem nota")
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Dados do Estudante -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height: 100%;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Estudante</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (PageModel.Student is not null)
+                        {
+                            <MudList T="string" Dense="true">
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Matrícula (Registro)</MudText>
+                                    <MudText Typo="Typo.body2">@PageModel.Student.RegistrationNumber</MudText>
+                                </MudListItem>
+                                @if (!string.IsNullOrWhiteSpace(PageModel.Student.GuardianName))
+                                {
+                                    <MudListItem T="string">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Responsável</MudText>
+                                        <MudText Typo="Typo.body2">@PageModel.Student.GuardianName (@PageModel.Student.GuardianRelationship)</MudText>
+                                    </MudListItem>
+                                }
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Status do Aluno</MudText>
+                                    <MudText Typo="Typo.body2">@PageModel.Student.Status</MudText>
+                                </MudListItem>
+                            </MudList>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">ID do Estudante: @item.StudentId</MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Dados da Disciplina -->
+            <MudItem xs="12" md="6">
+                <MudCard Elevation="2" Style="height: 100%;">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">Disciplina</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (PageModel.Subject is not null)
+                        {
+                            <MudList T="string" Dense="true">
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nome da Disciplina</MudText>
+                                    <MudText Typo="Typo.body2">@PageModel.Subject.Name</MudText>
+                                </MudListItem>
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Código</MudText>
+                                    <MudText Typo="Typo.body2">@PageModel.Subject.Code</MudText>
+                                </MudListItem>
+                                <MudListItem T="string">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Carga Horária</MudText>
+                                    <MudText Typo="Typo.body2">@PageModel.Subject.WorkloadHours horas</MudText>
+                                </MudListItem>
+                            </MudList>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">ID da Disciplina: @item.SubjectId</MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Metadados de Auditoria -->
+            <MudItem xs="12">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Criado em</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(item.CreatedAt.HasValue ? item.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm:ss") : "N/D")
+                                    @(!string.IsNullOrWhiteSpace(item.CreatedBy) ? $" por {item.CreatedBy}" : "")
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Última atualização</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(item.UpdatedAt.HasValue ? item.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm:ss") : "N/D")
+                                    @(!string.IsNullOrWhiteSpace(item.UpdatedBy) ? $" por {item.UpdatedBy}" : "")
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            await PageModel.LoadDetailsAsync(Id);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Id) && PageModel.Enrollment?.Id != Id)
+        {
+            await PageModel.LoadDetailsAsync(Id);
+        }
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (PageModel.Enrollment is null) return;
+
+        bool? confirmed = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão",
+            $"Tem certeza que deseja excluir esta matrícula ({PageModel.Enrollment.Id})?",
+            yesText: "Excluir Matrícula",
+            cancelText: "Cancelar");
+
+        if (confirmed == true)
+        {
+            var result = await EnrollmentService.DeleteAsync(PageModel.Enrollment.Id);
+            if (result.Succeeded)
+            {
+                Snackbar.Add("Matrícula excluída com sucesso.", Severity.Success);
+                Navigation.NavigateTo("/enrollments");
+            }
+            else
+            {
+                Snackbar.Add(result.Message ?? "Falha ao excluir matrícula.", Severity.Error);
+            }
+        }
+    }
+
+    private static Color GetStatusColor(EnrollmentStatus status) => status switch
+    {
+        EnrollmentStatus.Active => Color.Success,
+        EnrollmentStatus.Completed => Color.Info,
+        EnrollmentStatus.Locked => Color.Warning,
+        EnrollmentStatus.Cancelled => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(EnrollmentStatus status) => status switch
+    {
+        EnrollmentStatus.Active => "Ativa",
+        EnrollmentStatus.Completed => "Concluída",
+        EnrollmentStatus.Locked => "Trancada",
+        EnrollmentStatus.Cancelled => "Cancelada",
+        _ => status.ToString()
+    };
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+}

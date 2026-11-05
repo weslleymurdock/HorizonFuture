@@ -20,7 +20,8 @@ public sealed class IdentityAdminHandlers(IIdentityAdminService identityAdminSer
       IRequestHandler<RevokeUserPermissionRequest, ResponseBase<bool>>,
       IRequestHandler<ClearUserPermissionRequest, ResponseBase<bool>>,
       IRequestHandler<AssignUserPermissionGroupRequest, ResponseBase<bool>>,
-      IRequestHandler<RemoveUserPermissionGroupRequest, ResponseBase<bool>>
+      IRequestHandler<RemoveUserPermissionGroupRequest, ResponseBase<bool>>,
+      IRequestHandler<GetCurrentUserAccessRequest, ResponseBase<UserAccessResponse>>
 {
     public async ValueTask<ResponseBase<IReadOnlyList<RoleCatalogResponse>>> Handle(
         ListCatalogRolesRequest request,
@@ -125,6 +126,13 @@ public sealed class IdentityAdminHandlers(IIdentityAdminService identityAdminSer
             request.TargetUserId,
             request.GroupName,
             cancellationToken);
+    }
+
+    public async ValueTask<ResponseBase<UserAccessResponse>> Handle(
+        GetCurrentUserAccessRequest request,
+        CancellationToken cancellationToken)
+    {
+        return await identityAdminService.GetUserAccessAsync(request.UserId, cancellationToken);
     }
 }
 

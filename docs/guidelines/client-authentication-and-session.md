@@ -30,12 +30,19 @@ The authentication system is built on native Blazor abstractions (`Authenticatio
 1. **`ITokenStore`**:
    - Asynchronous contract for getting, saving, and clearing access and refresh tokens.
    - Exposes `event EventHandler? TokensChanged` to notify listeners of any mutation.
-2. **`HorizonAuthenticationStateProvider`**:
+2. **`IUserAccessService` & `UserAccessService`**:
+   - Thread-safe in-memory cache holding effective `CurrentRoles` and `CurrentPolicies` for the active session.
+   - Loads access rules from `GET /api/v1/auth/access` upon login or session restoration.
+   - Dispatches `AccessChanged` events and clears cached capabilities when 401 Unauthorized is encountered.
+3. **`HorizonAuthenticationStateProvider`**:
    - Inherits native `AuthenticationStateProvider`.
-   - Reads the access token from `ITokenStore`, decodes claims using `JwtParser`, and issues an authenticated `ClaimsPrincipal`.
-   - Reactively listens to `TokensChanged` to re-evaluate and propagate authentication changes across the entire component tree without requiring a manual page reload.
+   - Reads the access token from `ITokenStore`, decodes base claims using `JwtParser`, and enriches the principal with effective `ClaimTypes.Role` and `permission` claims supplied by `IUserAccessService`.
+   - Reactively listens to both `TokensChanged` and `AccessChanged` to re-evaluate and propagate authentication changes across the entire component tree without requiring a manual page reload.
    - If an access token is expired or expiring within seconds, it attempts proactive refresh via the refresh token before marking the session invalid.
-3. **`JwtParser`**:
+4. **`HorizonAuthorizationPolicyProvider`**:
+   - Custom `DefaultAuthorizationPolicyProvider` that automatically synthesizes authorization policies for any policy name (e.g. `[Authorize(Policy = "Enrollments.Read")]`).
+   - Evaluates whether the user holds a matching `permission` claim or possesses the `Admin` role, eliminating brittle client-side manual policy duplication.
+5. **`JwtParser`**:
    - Lightweight, zero-dependency parser that decodes JWT claims (`sub`, `email`, `role`, `permission`) and expiration (`exp`).
    - Evaluates token expiration with configurable clock-skew buffers.
 
@@ -84,6 +91,31 @@ Both host entry points (`HF.Web/App.razor` and `HF.Mobile/Components/Routes.razo
 ```
 
 When an unauthenticated user attempts to access any route decorated with `[Authorize]`, Blazor immediately evaluates authorization before the component is initialized, rendering `<NotAuthorized>`. `<RedirectToLogin />` immediately redirects the browser to `/auth/login`, ensuring protected forms and actions are never exposed.
+
+### Diagnosed Login Redirection Issues & Resolved Fixes
+
+During architectural inspection, three distinct root causes were identified that caused valid logins to stick on the login screen or bounce back to `/auth/login`:
+
+1. **Double Submission Race Condition:**
+   - *Problem:* `Login.razor` declared both `<MudForm @onsubmit="SubmitAsync">` and `<MudButton ButtonType="ButtonType.Submit" OnClick="SubmitAsync">`. Clicking the submit button fired `SubmitAsync` twice concurrently. Because `LoginPageModel.LoginAsync` lacked a re-entrancy guard, two authentication requests were dispatched to the backend simultaneously.
+   - *Fix:* Removed the redundant `OnClick` handler from the submit button (allowing standard form submission semantics) and added re-entrancy protection in `LoginPageModel.LoginAsync`:
+     ```csharp
+     if (IsBusy) return false;
+     ```
+
+2. **Asynchronous Authentication State Race Condition:**
+   - *Problem:* Upon login success, `SubmitAsync` immediately called `Navigation.NavigateTo("/courses")`. While `AuthService` saved the tokens to `ITokenStore`, triggering `TokensChanged`, `HorizonAuthenticationStateProvider` dispatches `NotifyAuthenticationStateChanged` asynchronously to Blazor's `CascadingAuthenticationState`. The synchronous navigation occurred before Blazor's cascading parameter updated. Consequently, `AuthorizeRouteView` evaluated the route using the previous unauthenticated state, hit `<NotAuthorized>`, and invoked `<RedirectToLogin />`, bouncing the user back to `/auth/login`.
+   - *Fix:* `Login.razor` now explicitly awaits the resolved state before navigating:
+     ```csharp
+     await AuthStateProvider.GetAuthenticationStateAsync();
+     Navigation.NavigateTo(destination);
+     ```
+
+3. **Insecure and Circular `ReturnUrl` Loops:**
+   - *Problem:* `ReturnUrl` accepted arbitrary query parameter values, which could lead to open redirects or infinite loops if `ReturnUrl` pointed to `/auth/login`.
+   - *Fix:* Added `IsSafeLocalUrl(string? url)` validation in `Login.razor` requiring local relative paths starting with `/` (excluding `//` or `/auth/login`), falling back safely to `/courses`. In `RedirectToLogin.razor`, circular returnUrls containing `/auth/login` are stripped before setting the redirect query.
+
+---
 
 ### Reactive Menus and Identity Badges
 

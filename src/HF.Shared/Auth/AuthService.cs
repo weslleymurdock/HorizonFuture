@@ -670,6 +670,30 @@ public class AuthService : IAuthService
         }
     }
 
+    public async Task<AuthResult<UserAccessDto>> GetCurrentUserAccessAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var response = await _apiClient.Api.V1.Auth.Access.GetAsync(cancellationToken: ct);
+            if (response?.Value is not null)
+            {
+                var roles = response.Value.Roles?.ToList() ?? new List<string>();
+                var policies = response.Value.Policies?.ToList() ?? new List<string>();
+                return AuthResult<UserAccessDto>.Ok(new UserAccessDto(roles, policies));
+            }
+
+            return AuthResult<UserAccessDto>.Fail(response?.Message ?? "Informações de acesso não encontradas.", statusCode: 404);
+        }
+        catch (ApiException ex)
+        {
+            return HandleApiException<UserAccessDto>(ex);
+        }
+        catch (Exception ex)
+        {
+            return AuthResult<UserAccessDto>.Fail(MapExceptionMessage(ex));
+        }
+    }
+
     private static AuthResult<T> HandleApiException<T>(ApiException ex)
     {
         var message = MapApiExceptionMessage(ex);

@@ -69,3 +69,7 @@ public sealed record RemoveUserPermissionGroupRequest(
     string GroupName)
     : IRequest<ResponseBase<bool>>;
 
+/// <summary>Query to get the current authenticated user's assigned roles and effective policies.</summary>
+public sealed record GetCurrentUserAccessRequest(string UserId)
+    : IRequest<ResponseBase<UserAccessResponse>>;
+

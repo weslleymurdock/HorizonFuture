@@ -1,5 +1,5 @@
 @page "/courses/{Id}"
-@attribute [Authorize]
+@attribute [Authorize(Policy = AppPolicies.CoursesRead)]
 @inject CourseDetailsPageModel PageModel
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
