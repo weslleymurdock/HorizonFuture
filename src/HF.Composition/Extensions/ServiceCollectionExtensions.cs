@@ -232,35 +232,4 @@ public static class ServiceCollectionExtensions
 
         return trimmed;
     }
-    private static string? NormalizeNpgsqlConnectionString(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-            return raw;
-
-        var trimmed = raw.Trim('"', '\'');
-        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) &&
-            (uri.Scheme.Equals("postgresql", StringComparison.OrdinalIgnoreCase) ||
-             uri.Scheme.Equals("postgres", StringComparison.OrdinalIgnoreCase)))
-        {
-            var userInfo = uri.UserInfo.Split(':', 2);
-            var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty;
-            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
-            var port = uri.Port > 0 ? uri.Port : 5432;
-            var database = uri.AbsolutePath.TrimStart('/');
-
-            var builder = new Npgsql.NpgsqlConnectionStringBuilder
-            {
-                Host = uri.Host,
-                Port = port,
-                Database = database,
-                Username = username,
-                Password = password,
-                SslMode = Npgsql.SslMode.Require,
-                TrustServerCertificate = true
-            };
-            return builder.ConnectionString;
-        }
-
-        return trimmed;
-    }
 }
