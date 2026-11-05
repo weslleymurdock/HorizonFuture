@@ -1,0 +1,133 @@
+@page "/auth/confirm-email"
+@inject ConfirmEmailPageModel PageModel
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6 mb-8">
+    <MudCard Elevation="4" Class="pa-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Confirmação de Email</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Valide seu cadastro ou confirme a alteração de seu endereço de email
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                    @PageModel.ErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                    @PageModel.SuccessMessage
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2 font-weight-bold">Confirmar com Código</MudText>
+            <MudForm @onsubmit="() => PageModel.ConfirmEmailAsync()">
+                <MudTextField T="string"
+                              Label="Identificador do Usuário (UserId)"
+                              @bind-Value="PageModel.UserId"
+                              Required="true"
+                              RequiredError="O UserId é obrigatório"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-3"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudTextField T="string"
+                              Label="Código de Confirmação"
+                              @bind-Value="PageModel.Code"
+                              Required="true"
+                              RequiredError="O código é obrigatório"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-3"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudTextField T="string"
+                              Label="Novo Email (apenas se foi alterado)"
+                              @bind-Value="PageModel.ChangedEmail"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-3"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Class="mb-4"
+                           OnClick="() => PageModel.ConfirmEmailAsync()"
+                           Disabled="@PageModel.IsBusy">
+                    @if (PageModel.IsBusy)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Confirmando...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Confirmar Email</MudText>
+                    }
+                </MudButton>
+            </MudForm>
+
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-2 font-weight-bold">Reenviar Email de Confirmação</MudText>
+            <MudForm @onsubmit="() => PageModel.ResendConfirmationEmailAsync()">
+                <MudTextField T="string"
+                              Label="Email Cadastrado"
+                              @bind-Value="PageModel.ResendEmail"
+                              InputType="InputType.Email"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-3"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           FullWidth="true"
+                           OnClick="() => PageModel.ResendConfirmationEmailAsync()"
+                           Disabled="@PageModel.IsBusy">
+                    Reenviar Confirmação
+                </MudButton>
+            </MudForm>
+        </MudCardContent>
+
+        <MudCardActions Class="d-flex flex-column align-center gap-2 pt-2">
+            <MudLink Href="/auth/login" Color="Color.Primary" Typo="Typo.body2">
+                Ir para o Login
+            </MudLink>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Code { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ChangedEmail { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(UserId) && !string.IsNullOrWhiteSpace(Code))
+        {
+            PageModel.UserId = UserId;
+            PageModel.Code = Code;
+            PageModel.ChangedEmail = ChangedEmail;
+            await PageModel.ConfirmEmailAsync();
+        }
+    }
+}
+

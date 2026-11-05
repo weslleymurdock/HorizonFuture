@@ -1,0 +1,153 @@
+@page "/auth/manage-roles"
+@inject ManageRolesPageModel PageModel
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">Gerenciamento de Roles</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+        Consulte e administre os papéis (roles) atribuídos a usuários do sistema com controle hierárquico.
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    <MudGrid>
+        <!-- Consulta de Roles por Usuário -->
+        <MudItem xs="12" md="7">
+            <MudCard Elevation="3" Class="pa-4 mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Roles do Usuário</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <div class="d-flex gap-2 mb-4">
+                        <MudTextField T="string"
+                                      Label="Identificador do Usuário (UserId)"
+                                      @bind-Value="PageModel.TargetUserId"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="flex-grow-1"
+                                      Disabled="@PageModel.IsBusy" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="() => PageModel.LoadUserRolesAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Consultar
+                        </MudButton>
+                    </div>
+
+                    @if (PageModel.UserRoles.Count > 0)
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Roles Atribuídas:</MudText>
+                        <div class="d-flex flex-wrap gap-2 mb-4">
+                            @foreach (var role in PageModel.UserRoles)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Primary"
+                                         Variant="Variant.Outlined"
+                                         OnClose="() => PageModel.RemoveRoleAsync(role)"
+                                         CloseIcon="@Icons.Material.Filled.Close">
+                                    @role
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(PageModel.TargetUserId))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                            Nenhuma role atribuída a este usuário no momento.
+                        </MudText>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Atribuir Nova Role</MudText>
+                    <div class="d-flex gap-2">
+                        <MudSelect T="string"
+                                   Label="Selecione a Role"
+                                   @bind-Value="PageModel.SelectedRoleToAssign"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="flex-grow-1"
+                                   Disabled="@PageModel.IsBusy">
+                            @foreach (var role in PageModel.CatalogRoles)
+                            {
+                                <MudSelectItem Value="@role.RoleName">
+                                    @role.RoleName (Rank @role.Rank)
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   OnClick="() => PageModel.AssignRoleAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Atribuir
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Catálogo Geral de Roles -->
+        <MudItem xs="12" md="5">
+            <MudCard Elevation="3" Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Catálogo de Roles</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Primary"
+                                       OnClick="() => PageModel.LoadCatalogRolesAsync()"
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Atualizar catálogo" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (PageModel.CatalogRoles.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Nenhuma role carregada do catálogo.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudTable Items="PageModel.CatalogRoles" Dense="true" Hover="true" Elevation="0">
+                            <HeaderContent>
+                                <MudTh>Nome da Role</MudTh>
+                                <MudTh>Hierarquia (Rank)</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Nome">@context.RoleName</MudTd>
+                                <MudTd DataLabel="Rank">@context.Rank</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await PageModel.LoadCatalogRolesAsync();
+    }
+}
+

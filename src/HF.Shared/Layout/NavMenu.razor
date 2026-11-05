@@ -1,3 +1,14 @@
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+
+    <MudNavGroup Title="Autenticação" Icon="@Icons.Material.Filled.Security" Expanded="true">
+        <MudNavLink Href="/auth/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
+        <MudNavLink Href="/auth/register" Icon="@Icons.Material.Filled.PersonAdd">Cadastro</MudNavLink>
+        <MudNavLink Href="/auth/forgot-password" Icon="@Icons.Material.Filled.LockReset">Recuperar Senha</MudNavLink>
+        <MudNavLink Href="/auth/reset-password" Icon="@Icons.Material.Filled.Key">Redefinir Senha</MudNavLink>
+        <MudNavLink Href="/auth/confirm-email" Icon="@Icons.Material.Filled.MarkEmailRead">Confirmar Email</MudNavLink>
+        <MudNavLink Href="/auth/manage" Icon="@Icons.Material.Filled.ManageAccounts">Meu Perfil / 2FA</MudNavLink>
+        <MudNavLink Href="/auth/manage-roles" Icon="@Icons.Material.Filled.AdminPanelSettings">Roles</MudNavLink>
+        <MudNavLink Href="/auth/manage-permissions" Icon="@Icons.Material.Filled.VerifiedUser">Permissões e Grupos</MudNavLink>
+    </MudNavGroup>
 </MudNavMenu>

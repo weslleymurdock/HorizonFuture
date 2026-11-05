@@ -1,0 +1,116 @@
+@page "/auth/login"
+@inject LoginPageModel PageModel
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6 mb-8">
+    <MudCard Elevation="4" Class="pa-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Align="Align.Center" GutterBottom="true">Entrar no Horizon</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Acesse sua conta para continuar
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                    @PageModel.ErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                    @PageModel.SuccessMessage
+                </MudAlert>
+            }
+
+            <MudForm @onsubmit="() => PageModel.LoginAsync()">
+                <MudTextField T="string"
+                              Label="Email"
+                              @bind-Value="PageModel.Email"
+                              InputType="InputType.Email"
+                              Required="true"
+                              RequiredError="O email é obrigatório"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-4"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudTextField T="string"
+                              Label="Senha"
+                              @bind-Value="PageModel.Password"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="A senha é obrigatória"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-4"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Lock"
+                              Disabled="@PageModel.IsBusy" />
+
+                <MudSwitch @bind-Value="PageModel.ShowTwoFactor"
+                           Label="Possui autenticação em dois fatores (2FA)?"
+                           Color="Color.Primary"
+                           Class="mb-3" />
+
+                @if (PageModel.ShowTwoFactor)
+                {
+                    <MudTextField T="string"
+                                  Label="Código 2FA (Authenticator)"
+                                  @bind-Value="PageModel.TwoFactorCode"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Placeholder="Ex: 123456"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <MudTextField T="string"
+                                  Label="Código de Recuperação 2FA (Opcional)"
+                                  @bind-Value="PageModel.TwoFactorRecoveryCode"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Placeholder="Código de backup"
+                                  Disabled="@PageModel.IsBusy" />
+                }
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mt-2"
+                           OnClick="() => PageModel.LoginAsync()"
+                           Disabled="@PageModel.IsBusy">
+                    @if (PageModel.IsBusy)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">Entrando...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Entrar</MudText>
+                    }
+                </MudButton>
+            </MudForm>
+        </MudCardContent>
+
+        <MudCardActions Class="d-flex flex-column align-center gap-2 pt-2">
+            <MudLink Href="/auth/forgot-password" Color="Color.Primary" Typo="Typo.body2">
+                Esqueceu sua senha?
+            </MudLink>
+            <MudDivider Class="my-2" Style="width: 100%;" />
+            <MudText Typo="Typo.body2">
+                Não tem uma conta? <MudLink Href="/auth/register" Color="Color.Secondary">Cadastre-se aqui</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+

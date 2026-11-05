@@ -1,0 +1,249 @@
+@page "/auth/manage"
+@inject ManageProfilePageModel PageModel
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">Meu Perfil e Segurança</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+        Gerencie suas informações cadastrais, autenticação em dois fatores e sessões de acesso.
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    <MudGrid>
+        <!-- Dados do Usuário & Atualização -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="pa-4 h-100">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Dados da Conta</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Primary"
+                                       OnClick="() => PageModel.LoadInfoAsync()"
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Atualizar dados" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body1" Class="mb-1"><b>Email:</b> @(string.IsNullOrWhiteSpace(PageModel.Email) ? "Não carregado" : PageModel.Email)</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        <b>Status:</b>
+                        @if (PageModel.IsEmailConfirmed)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="ms-2">Confirmado</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Class="ms-2">Pendente de Confirmação</MudChip>
+                        }
+                    </MudText>
+                    @if (!string.IsNullOrWhiteSpace(PageModel.DisplayName))
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-1"><b>Nome de Exibição:</b> @PageModel.DisplayName</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(PageModel.FirstName) || !string.IsNullOrWhiteSpace(PageModel.SurName))
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-3"><b>Nome Completo:</b> @PageModel.FirstName @PageModel.SurName</MudText>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-3 font-weight-bold">Atualizar Email ou Senha</MudText>
+                    <MudTextField T="string"
+                                  Label="Novo Email (Opcional)"
+                                  @bind-Value="PageModel.NewEmail"
+                                  InputType="InputType.Email"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <MudTextField T="string"
+                                  Label="Nova Senha (Opcional)"
+                                  @bind-Value="PageModel.NewPassword"
+                                  InputType="InputType.Password"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <MudTextField T="string"
+                                  Label="Senha Atual (Obrigatória para salvar)"
+                                  @bind-Value="PageModel.OldPassword"
+                                  InputType="InputType.Password"
+                                  Required="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-4"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               OnClick="() => PageModel.UpdateInfoAsync()"
+                               Disabled="@PageModel.IsBusy">
+                        Salvar Alterações
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- 2FA & Sessão -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="3" Class="pa-4 mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Autenticação em Dois Fatores (2FA)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        <b>Status 2FA:</b>
+                        @if (PageModel.IsTwoFactorEnabled)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Class="ms-2">Ativado</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small" Class="ms-2">Desativado</MudChip>
+                        }
+                    </MudText>
+
+                    @if (!string.IsNullOrWhiteSpace(PageModel.SharedKey))
+                    {
+                        <MudAlert Severity="Severity.Info" Class="my-2" Variant="Variant.Outlined">
+                            <b>Chave de Configuração:</b> @PageModel.SharedKey
+                        </MudAlert>
+                    }
+
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        <b>Códigos de recuperação restantes:</b> @PageModel.RecoveryCodesLeft
+                    </MudText>
+
+                    @if (PageModel.RecoveryCodes is not null && PageModel.RecoveryCodes.Count > 0)
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="my-2" Variant="Variant.Filled">
+                            <MudText Typo="Typo.subtitle2">Guarde seus novos códigos de recuperação:</MudText>
+                            <MudList T="string" Dense="true">
+                                @foreach (var recoveryCodeItem in PageModel.RecoveryCodes)
+                                {
+                                    <MudListItem Text="@recoveryCodeItem" />
+                                }
+                            </MudList>
+                        </MudAlert>
+                    }
+
+                    <MudTextField T="string"
+                                  Label="Código do Authenticator (para ativação/confirmação)"
+                                  @bind-Value="PageModel.TwoFactorCodeInput"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <div class="d-flex flex-wrap gap-2">
+                        @if (!PageModel.IsTwoFactorEnabled)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       Size="Size.Small"
+                                       OnClick="() => PageModel.ConfigureTwoFactorAsync(enable: true)"
+                                       Disabled="@PageModel.IsBusy">
+                                Ativar 2FA
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="() => PageModel.ConfigureTwoFactorAsync(enable: false)"
+                                       Disabled="@PageModel.IsBusy">
+                                Desativar 2FA
+                            </MudButton>
+                        }
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(resetSharedKey: true)"
+                                   Disabled="@PageModel.IsBusy">
+                            Gerar Nova Chave
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   Size="Size.Small"
+                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(resetRecoveryCodes: true)"
+                                   Disabled="@PageModel.IsBusy">
+                            Novos Códigos de Backup
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Secondary"
+                                   Size="Size.Small"
+                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(forgetMachine: true)"
+                                   Disabled="@PageModel.IsBusy">
+                            Esquecer Máquina
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+
+            <MudCard Elevation="3" Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Gerenciamento de Sessão e Tokens</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField T="string"
+                                  Label="Refresh Token"
+                                  @bind-Value="PageModel.RefreshTokenInput"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mb-3"
+                                  Disabled="@PageModel.IsBusy" />
+
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="() => PageModel.RefreshTokensAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Renovar Tokens
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   OnClick="() => PageModel.RevokeTokenAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Revogar Sessão (Logout)
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await PageModel.LoadInfoAsync();
+    }
+}

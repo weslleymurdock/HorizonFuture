@@ -1,0 +1,279 @@
+@page "/auth/manage-permissions"
+@inject ManagePermissionsPageModel PageModel
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-8">
+    <MudText Typo="Typo.h4" GutterBottom="true">Permissões e Grupos</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+        Gerencie permissões granulares de usuários, concessões diretas, revogações explícitas e associação a grupos.
+    </MudText>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    <MudGrid>
+        <!-- Consulta do Usuário & Ações Granulares -->
+        <MudItem xs="12" md="7">
+            <MudCard Elevation="3" Class="pa-4 mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Permissões do Usuário</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <div class="d-flex gap-2 mb-4">
+                        <MudTextField T="string"
+                                      Label="Identificador do Usuário (UserId)"
+                                      @bind-Value="PageModel.TargetUserId"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="flex-grow-1"
+                                      Disabled="@PageModel.IsBusy" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="() => PageModel.LoadUserPermissionsAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Consultar
+                        </MudButton>
+                    </div>
+
+                    <!-- Grupos Associados -->
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Grupos Associados:</MudText>
+                    @if (PageModel.AssignedGroups.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @foreach (var grp in PageModel.AssignedGroups)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Info"
+                                         Variant="Variant.Outlined"
+                                         OnClose="() => PageModel.RemoveGroupAsync(grp)"
+                                         CloseIcon="@Icons.Material.Filled.Close">
+                                    @grp
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3">Nenhum grupo associado.</MudText>
+                    }
+
+                    <!-- Permissões Efetivas -->
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Permissões Efetivas:</MudText>
+                    @if (PageModel.EffectivePermissions.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-1 mb-3">
+                            @foreach (var perm in PageModel.EffectivePermissions)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">
+                                    @perm
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3">Nenhuma permissão efetiva computada.</MudText>
+                    }
+
+                    <!-- Concessões Diretas -->
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Concessões Diretas (Grants):</MudText>
+                    @if (PageModel.DirectGrants.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @foreach (var grant in PageModel.DirectGrants)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Success"
+                                         Variant="Variant.Outlined"
+                                         OnClose="() => PageModel.ClearPermissionAsync(grant)"
+                                         CloseIcon="@Icons.Material.Filled.Close">
+                                    @grant (Limpar Override)
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3">Nenhuma concessão direta.</MudText>
+                    }
+
+                    <!-- Revogações Explícitas -->
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Revogações Explícitas (Overrides):</MudText>
+                    @if (PageModel.ExplicitRevocations.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @foreach (var rev in PageModel.ExplicitRevocations)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Error"
+                                         Variant="Variant.Outlined"
+                                         OnClose="() => PageModel.ClearPermissionAsync(rev)"
+                                         CloseIcon="@Icons.Material.Filled.Close">
+                                    @rev (Limpar Override)
+                                </MudChip>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-3">Nenhuma revogação explícita configurada.</MudText>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <!-- Ações de Gerenciamento -->
+                    <MudText Typo="Typo.subtitle1" Class="mb-2 font-weight-bold">Ações Granulares</MudText>
+
+                    <!-- Conceder Permissão -->
+                    <div class="d-flex gap-2 mb-3">
+                        <MudSelect T="string"
+                                   Label="Permissão para Conceder"
+                                   @bind-Value="PageModel.SelectedPermissionToGrant"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="flex-grow-1"
+                                   Disabled="@PageModel.IsBusy">
+                            @foreach (var p in PageModel.CatalogPermissions)
+                            {
+                                <MudSelectItem Value="@p">@p</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   OnClick="() => PageModel.GrantPermissionAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Conceder
+                        </MudButton>
+                    </div>
+
+                    <!-- Revogar Permissão -->
+                    <div class="d-flex gap-2 mb-3">
+                        <MudSelect T="string"
+                                   Label="Permissão para Revogar Explicitamente"
+                                   @bind-Value="PageModel.SelectedPermissionToRevoke"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="flex-grow-1"
+                                   Disabled="@PageModel.IsBusy">
+                            @foreach (var p in PageModel.CatalogPermissions)
+                            {
+                                <MudSelectItem Value="@p">@p</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   OnClick="() => PageModel.RevokePermissionAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Revogar
+                        </MudButton>
+                    </div>
+
+                    <!-- Associar Grupo -->
+                    <div class="d-flex gap-2">
+                        <MudSelect T="string"
+                                   Label="Grupo para Associar"
+                                   @bind-Value="PageModel.SelectedGroupToAssign"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Class="flex-grow-1"
+                                   Disabled="@PageModel.IsBusy">
+                            @foreach (var grpKey in PageModel.CatalogGroups.Keys)
+                            {
+                                <MudSelectItem Value="@grpKey">@grpKey</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Info"
+                                   OnClick="() => PageModel.AssignGroupAsync()"
+                                   Disabled="@PageModel.IsBusy">
+                            Associar Grupo
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Catálogo de Permissões e Grupos -->
+        <MudItem xs="12" md="5">
+            <MudCard Elevation="3" Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Catálogo Geral</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Primary"
+                                       OnClick="() => PageModel.LoadCatalogPermissionsAsync()"
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Atualizar catálogo" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Grupos Pré-definidos:</MudText>
+                    @if (PageModel.CatalogGroups.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-4">Nenhum grupo no catálogo.</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var kvp in PageModel.CatalogGroups)
+                        {
+                            <MudExpansionPanels Dense="true" Class="mb-2">
+                                <MudExpansionPanel Text="@kvp.Key">
+                                    <MudList T="string" Dense="true">
+                                        @foreach (var item in kvp.Value)
+                                        {
+                                            <MudListItem Text="@item" />
+                                        }
+                                    </MudList>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        }
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Todas as Permissões do Catálogo:</MudText>
+                    @if (PageModel.CatalogPermissions.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Nenhuma permissão no catálogo.</MudText>
+                    }
+                    else
+                    {
+                        <div style="max-height: 250px; overflow-y: auto;">
+                            <MudList T="string" Dense="true">
+                                @foreach (var p in PageModel.CatalogPermissions)
+                                {
+                                    <MudListItem Text="@p" />
+                                }
+                            </MudList>
+                        </div>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await PageModel.LoadCatalogPermissionsAsync();
+    }
+}
+
