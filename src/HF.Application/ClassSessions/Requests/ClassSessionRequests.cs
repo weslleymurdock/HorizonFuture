@@ -1,4 +1,5 @@
 using HF.Application.ClassSessions.Responses;
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using Mediator;
 
@@ -11,7 +12,7 @@ public sealed record CreateClassSessionRequest(
     TimeOnly? StartTime = null,
     int? DurationMinutes = null,
     string? Notes = null)
-    : IRequest<ResponseBase<ClassSessionResponse>>;
+    : IRequest<ResponseBase<ClassSessionResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a class session by identifier.</summary>
 public sealed record GetClassSessionByIdRequest(string Id)
@@ -32,9 +33,9 @@ public sealed record UpdateClassSessionRequest(
     TimeOnly? StartTime = null,
     int? DurationMinutes = null,
     string? Notes = null)
-    : IRequest<ResponseBase<ClassSessionResponse>>;
+    : IRequest<ResponseBase<ClassSessionResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a class session by identifier.</summary>
 public sealed record DeleteClassSessionRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

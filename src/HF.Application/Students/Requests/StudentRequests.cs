@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Students.Responses;
 using HF.Domain.Students;
@@ -20,7 +21,7 @@ public sealed record CreateStudentRequest(
     string? SpecialNeeds = null,
     string? MedicalNotes = null,
     DateOnly? EnrollmentDate = null)
-    : IRequest<ResponseBase<StudentResponse>>;
+    : IRequest<ResponseBase<StudentResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a student by identifier.</summary>
 public sealed record GetStudentByIdRequest(string Id)
@@ -46,9 +47,9 @@ public sealed record UpdateStudentRequest(
     StudentStatus Status = StudentStatus.Active,
     string? SpecialNeeds = null,
     string? MedicalNotes = null)
-    : IRequest<ResponseBase<StudentResponse>>;
+    : IRequest<ResponseBase<StudentResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a student by identifier.</summary>
 public sealed record DeleteStudentRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

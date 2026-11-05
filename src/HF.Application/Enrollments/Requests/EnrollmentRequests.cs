@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Enrollments.Responses;
 using HF.Domain.Enrollments;
@@ -14,7 +15,7 @@ public sealed record CreateEnrollmentRequest(
     DateOnly? EnrollmentDate = null,
     EnrollmentStatus Status = EnrollmentStatus.Active,
     decimal? FinalGrade = null)
-    : IRequest<ResponseBase<EnrollmentResponse>>;
+    : IRequest<ResponseBase<EnrollmentResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get an enrollment by identifier.</summary>
 public sealed record GetEnrollmentByIdRequest(string Id)
@@ -39,9 +40,9 @@ public sealed record UpdateEnrollmentRequest(
     DateOnly EnrollmentDate,
     EnrollmentStatus Status = EnrollmentStatus.Active,
     decimal? FinalGrade = null)
-    : IRequest<ResponseBase<EnrollmentResponse>>;
+    : IRequest<ResponseBase<EnrollmentResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete an enrollment by identifier.</summary>
 public sealed record DeleteEnrollmentRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

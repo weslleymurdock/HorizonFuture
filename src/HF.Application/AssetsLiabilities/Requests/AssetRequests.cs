@@ -1,4 +1,5 @@
 using HF.Application.AssetsLiabilities.Responses;
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Domain.AssetsLiabilities;
 using Mediator;
@@ -18,7 +19,7 @@ public sealed record CreateAssetRequest(
     string? SerialOrInvoiceNumber = null,
     AssetStatus Status = AssetStatus.InUse,
     string? Notes = null)
-    : IRequest<ResponseBase<AssetResponse>>;
+    : IRequest<ResponseBase<AssetResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get an asset by identifier.</summary>
 public sealed record GetAssetByIdRequest(string Id)
@@ -45,9 +46,9 @@ public sealed record UpdateAssetRequest(
     string? SerialOrInvoiceNumber = null,
     AssetStatus Status = AssetStatus.InUse,
     string? Notes = null)
-    : IRequest<ResponseBase<AssetResponse>>;
+    : IRequest<ResponseBase<AssetResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete an asset by identifier.</summary>
 public sealed record DeleteAssetRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

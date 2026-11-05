@@ -1,5 +1,27 @@
 @inherits LayoutComponentBase
+<style>
+/* Safe area adjustments for mobile and desktop hosts */
+::deep .mud-appbar.mud-appbar-fixed-top {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
+}
 
+::deep .mud-drawer-fixed.mud-drawer-clipped-always,
+::deep .mud-drawer-fixed.mud-drawer-responsive.mud-drawer-clipped-always,
+::deep .mud-drawer-fixed.mud-drawer-temporary.mud-drawer-clipped-always {
+    top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px));
+    height: calc(100% - var(--mud-appbar-height) - env(safe-area-inset-top, 0px));
+}
+
+::deep .app-main-content,
+::deep .mud-main-content {
+    padding-top: calc(var(--mud-appbar-height) + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+}
+
+</style>
 <MudThemeProvider Theme="@_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
@@ -17,7 +39,7 @@
         <NavMenu />
     </MudDrawer>
 
-    <MudMainContent Class="app-main-content pa-4">
+    <MudMainContent Class="app-main-content">
         @Body
     </MudMainContent>
 </MudLayout>

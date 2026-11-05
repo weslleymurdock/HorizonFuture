@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Teachers.Responses;
 using HF.Domain.Teachers;
@@ -15,7 +16,7 @@ public sealed record CreateTeacherRequest(
     string? SchoolUnitId = null,
     DateOnly? HireDate = null,
     TeacherStatus Status = TeacherStatus.Active)
-    : IRequest<ResponseBase<TeacherResponse>>;
+    : IRequest<ResponseBase<TeacherResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a teacher by identifier.</summary>
 public sealed record GetTeacherByIdRequest(string Id)
@@ -37,9 +38,9 @@ public sealed record UpdateTeacherRequest(
     string? Bio = null,
     string? SchoolUnitId = null,
     TeacherStatus Status = TeacherStatus.Active)
-    : IRequest<ResponseBase<TeacherResponse>>;
+    : IRequest<ResponseBase<TeacherResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a teacher by identifier.</summary>
 public sealed record DeleteTeacherRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

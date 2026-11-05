@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Managers.Responses;
 using HF.Domain.Managers;
@@ -14,7 +15,7 @@ public sealed record CreateManagerRequest(
     string? SchoolUnitId = null,
     DateOnly? StartDate = null,
     ManagerStatus Status = ManagerStatus.Active)
-    : IRequest<ResponseBase<ManagerResponse>>;
+    : IRequest<ResponseBase<ManagerResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a manager by identifier.</summary>
 public sealed record GetManagerByIdRequest(string Id)
@@ -35,9 +36,9 @@ public sealed record UpdateManagerRequest(
     string RoleTitle,
     string? SchoolUnitId = null,
     ManagerStatus Status = ManagerStatus.Active)
-    : IRequest<ResponseBase<ManagerResponse>>;
+    : IRequest<ResponseBase<ManagerResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a manager by identifier.</summary>
 public sealed record DeleteManagerRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

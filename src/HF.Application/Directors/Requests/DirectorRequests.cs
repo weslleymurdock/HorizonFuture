@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Directors.Responses;
 using HF.Domain.Directors;
@@ -14,7 +15,7 @@ public sealed record CreateDirectorRequest(
     DateOnly? MandateStart = null,
     DateOnly? MandateEnd = null,
     DirectorStatus Status = DirectorStatus.Active)
-    : IRequest<ResponseBase<DirectorResponse>>;
+    : IRequest<ResponseBase<DirectorResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a director by identifier.</summary>
 public sealed record GetDirectorByIdRequest(string Id)
@@ -36,9 +37,9 @@ public sealed record UpdateDirectorRequest(
     DateOnly? MandateStart = null,
     DateOnly? MandateEnd = null,
     DirectorStatus Status = DirectorStatus.Active)
-    : IRequest<ResponseBase<DirectorResponse>>;
+    : IRequest<ResponseBase<DirectorResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a director by identifier.</summary>
 public sealed record DeleteDirectorRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

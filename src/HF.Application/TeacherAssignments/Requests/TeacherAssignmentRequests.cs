@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.TeacherAssignments.Responses;
 using HF.Domain.TeacherAssignments;
@@ -12,7 +13,7 @@ public sealed record CreateTeacherAssignmentRequest(
     int AcademicYear,
     int AcademicSemester,
     TeacherAssignmentRole Role = TeacherAssignmentRole.Primary)
-    : IRequest<ResponseBase<TeacherAssignmentResponse>>;
+    : IRequest<ResponseBase<TeacherAssignmentResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a teacher assignment by identifier.</summary>
 public sealed record GetTeacherAssignmentByIdRequest(string Id)
@@ -34,9 +35,9 @@ public sealed record UpdateTeacherAssignmentRequest(
     int AcademicYear,
     int AcademicSemester,
     TeacherAssignmentRole Role = TeacherAssignmentRole.Primary)
-    : IRequest<ResponseBase<TeacherAssignmentResponse>>;
+    : IRequest<ResponseBase<TeacherAssignmentResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a teacher assignment by identifier.</summary>
 public sealed record DeleteTeacherAssignmentRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

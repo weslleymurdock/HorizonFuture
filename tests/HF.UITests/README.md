@@ -1,6 +1,6 @@
 # HF.UITests - UI and Integration Test Suite (Web, Mobile, and Shared)
 
-This project contains the comprehensive user interface (UI) and workflow integration test suite for the **Horizon – Olhar do Futuro** platform, covering the **Authentication (Auth)**, **Courses**, and **Subjects** features.
+This project contains the comprehensive user interface (UI) and workflow integration test suite for the **Horizon – Olhar do Futuro** platform, covering the **Authentication (Auth)**, **Courses**, **Subjects**, and **Students** features.
 
 It exercises both client host targets:
 
@@ -18,12 +18,14 @@ tests/HF.UITests/
 │   ├── MobileAuthFlowUITests.cs              # Authentication flows and viewport layout
 │   ├── MobileCoursesFlowUITests.cs           # Courses list, create, and details views in BlazorWebView
 │   ├── MobileSubjectsFlowUITests.cs          # Subjects list, create, and details views in BlazorWebView
+│   ├── MobileStudentsFlowUITests.cs          # Students list, create, and details views in BlazorWebView
 │   └── MobileTestCollection.cs               # Sequential collection definition disabling parallel device sessions
 ├── Shared/                                   # Observable behaviors, PageModels, and Kiota integration
 │   ├── Fakes/
 │   │   ├── FakeAuthService.cs                # Deterministic fake for IAuthService
 │   │   ├── FakeCourseService.cs              # Deterministic fake for ICourseService
-│   │   └── FakeSubjectService.cs             # Deterministic fake for ISubjectService
+│   │   ├── FakeSubjectService.cs             # Deterministic fake for ISubjectService
+│   │   └── FakeStudentService.cs             # Deterministic fake for IStudentService
 │   ├── SharedAuthKiotaIntegrationTests.cs    # Auth Kiota REST client integration tests
 │   ├── SharedAuthPageModelsTests.cs          # Unit tests for the 8 Auth PageModels
 │   ├── SharedAuthRouteAndComponentDiscoveryTests.cs # Route and DI resolution for Auth pages
@@ -33,11 +35,15 @@ tests/HF.UITests/
 │   ├── SharedSubjectsKiotaIntegrationTests.cs# Subjects Kiota REST client integration tests (all 5 endpoints)
 │   ├── SharedSubjectsPageModelsTests.cs      # Unit tests for the 4 Subjects PageModels
 │   ├── SharedSubjectsRouteAndComponentDiscoveryTests.cs# Route and DI resolution for Subjects pages
+│   ├── SharedStudentsKiotaIntegrationTests.cs# Students Kiota REST client integration tests (all 5 endpoints)
+│   ├── SharedStudentsPageModelsTests.cs      # Unit tests for the 4 Students PageModels
+│   ├── SharedStudentsRouteAndComponentDiscoveryTests.cs# Route and DI resolution for Students pages
 │   └── WebClientBaseUrlConfigurationTests.cs # Verification of REST client base URL resolution
 ├── Web/                                      # Web UI automation for HF.Web (Selenium WebDriver)
 │   ├── WebAuthFlowUITests.cs                 # Real browser authentication and network audit
 │   ├── WebCoursesFlowUITests.cs              # Real browser CRUD, validation, details, and deletion for Courses
-│   └── WebSubjectsFlowUITests.cs             # Real browser CRUD, validation, details, and deletion for Subjects
+│   ├── WebSubjectsFlowUITests.cs             # Real browser CRUD, validation, details, and deletion for Subjects
+│   └── WebStudentsFlowUITests.cs             # Real browser CRUD, validation, details, and deletion for Students
 ├── xunit.runner.json                         # Test runner configuration (parallelization controls)
 └── README.md
 ```
@@ -48,9 +54,9 @@ tests/HF.UITests/
 
 The `HF.Shared` test suite validates:
 
-- **Razor Component Routing**: Verifies all `@page` route definitions (`/courses`, `/courses/create`, `/courses/{Id}`, `/courses/{Id}/edit`, `/subjects`, `/subjects/create`, `/subjects/{Id}`, `/subjects/{Id}/edit`, `/auth/*`).
-- **Dependency Injection Scope**: Verifies that `AddPageModels()` registers every PageModel and service interface (`ICourseService`, `ISubjectService`, `IAuthService`) as `Scoped`.
-- **PageModel State Machine**: Tests validation rules, loading states (`IsBusy`), error notifications (`ErrorMessage`), unauthorized/forbidden states (`IsUnauthorized`, `IsForbidden`), and success indicators.
+- **Razor Component Routing**: Verifies all `@page` route definitions (`/courses`, `/courses/create`, `/courses/{Id}`, `/courses/{Id}/edit`, `/subjects`, `/subjects/create`, `/subjects/{Id}`, `/subjects/{Id}/edit`, `/students`, `/students/create`, `/students/{Id}`, `/students/{Id}/edit`, `/auth/*`).
+- **Dependency Injection Scope**: Verifies that `AddPageModels()` registers every PageModel and service interface (`ICourseService`, `ISubjectService`, `IStudentService`, `IAuthService`) as `Scoped`.
+- **PageModel State Machine**: Tests validation rules, loading states (`IsBusy`), error notifications (`ErrorMessage`), unauthorized/forbidden states (`IsUnauthorized`, `IsForbidden`), conflict states, and success indicators.
 - **Kiota REST Integration**: Validates serialization, query string formatting, error problem details mapping (HTTP 400, 401, 403, 404, 409, 422), and token injection using mock HTTP handlers.
 
 ### Executing Shared Tests
@@ -67,6 +73,9 @@ dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Shar
 
 # Subjects shared tests
 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~SharedSubjects"
+
+# Students shared tests
+dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~SharedStudents"
 ```
 
 ---
@@ -80,7 +89,7 @@ The `HF.Web` tests execute real end-to-end browser operations in Google Chrome a
 - **Unauthorized States**: Accessing list routes without an active session displays an unauthenticated warning banner.
 - **Form Validation**: Submitting invalid or incomplete forms displays inline error alerts.
 - **Creation Flow**: Completing forms with synthetic test data generates records, sends HTTP requests via Kiota, and renders success alerts.
-- **Details Inspection**: Verifies metadata display (name, code, workload hours, status, course association).
+- **Details Inspection**: Verifies metadata display (identification, responsible contacts, health observations).
 - **Edit and Save**: Updates entity attributes, handles concurrency, and persists changes.
 - **Not Found States**: Accessing nonexistent GUID routes displays the dedicated "Not Found" card.
 - **Deletion Flow**: Triggers confirmation dialogs, deletes records via the API, and redirects to list views.
@@ -123,6 +132,9 @@ HF_UI_TEST_HEADLESS=true dotnet test tests/HF.UITests/HF.UITests.csproj --filter
 
 # Run Subjects Web tests
 HF_UI_TEST_HEADLESS=true dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~WebSubjectsFlowUITests"
+
+# Run Students Web tests
+HF_UI_TEST_HEADLESS=true dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~WebStudentsFlowUITests"
 ```
 
 ---
@@ -182,18 +194,22 @@ dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Mobi
 
 # Run Subjects Mobile tests
 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~MobileSubjectsFlowUITests"
+
+# Run Students Mobile tests
+dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~MobileStudentsFlowUITests"
 ```
 
 ---
 
 ## 4. Verification Summary
 
-| Test Category | Test Class | Total Tests | Status |
+| Test Category | Test Class / Project | Total Tests | Status |
 | :--- | :--- | :---: | :---: |
 | **Shared Auth** | `SharedAuthPageModelsTests`, `SharedAuthRouteAndComponentDiscoveryTests`, `SharedAuthKiotaIntegrationTests` | 55 | Passed |
 | **Shared Courses** | `SharedCoursesPageModelsTests`, `SharedCoursesRouteAndComponentDiscoveryTests`, `SharedCoursesKiotaIntegrationTests` | 54 | Passed |
 | **Shared Subjects** | `SharedSubjectsPageModelsTests`, `SharedSubjectsRouteAndComponentDiscoveryTests`, `SharedSubjectsKiotaIntegrationTests` | 57 | Passed |
-| **Web Selenium** | `WebAuthFlowUITests`, `WebCoursesFlowUITests`, `WebSubjectsFlowUITests`, `WebClientBaseUrlConfigurationTests` | 15 | Passed |
-| **Mobile Appium** | `MobileAuthFlowUITests`, `MobileCoursesFlowUITests`, `MobileSubjectsFlowUITests` | 10 | Passed |
-| **Domain & Unit** | `HF.UnitTests` (Entities, Value Objects, Handlers, Seed) | 52 | Passed |
-| **Total Verified** | **All Test Projects** | **243** | **0 Failed, 0 Skipped** |
+| **Shared Students** | `SharedStudentsPageModelsTests`, `SharedStudentsRouteAndComponentDiscoveryTests`, `SharedStudentsKiotaIntegrationTests` | 51 | Passed |
+| **Domain & Unit** | `HF.UnitTests` (Entities, Architecture, Middlewares, Handlers, Services) | 76 | Passed |
+| **Web Selenium** | `WebAuthFlowUITests`, `WebCoursesFlowUITests`, `WebSubjectsFlowUITests`, `WebStudentsFlowUITests` | 20 | Environment Blocked (Browser binary missing: `/usr/bin/google-chrome`) |
+| **Mobile Appium** | `MobileAuthFlowUITests`, `MobileCoursesFlowUITests`, `MobileSubjectsFlowUITests`, `MobileStudentsFlowUITests` | 12 | Environment Blocked (Appium server / Android emulator missing) |
+| **Total Automated & Passing in Environment** | **Unit & Shared Suites** | **293** | **0 Failed, 0 Skipped** |

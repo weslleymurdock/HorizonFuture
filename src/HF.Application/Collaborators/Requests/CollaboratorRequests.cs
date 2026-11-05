@@ -1,4 +1,5 @@
 using HF.Application.Collaborators.Responses;
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Domain.Collaborators;
 using Mediator;
@@ -15,7 +16,7 @@ public sealed record CreateCollaboratorRequest(
     ContractType ContractType = ContractType.PermanentClt,
     DateOnly? AdmissionDate = null,
     CollaboratorStatus Status = CollaboratorStatus.Active)
-    : IRequest<ResponseBase<CollaboratorResponse>>;
+    : IRequest<ResponseBase<CollaboratorResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a collaborator by identifier.</summary>
 public sealed record GetCollaboratorByIdRequest(string Id)
@@ -37,9 +38,9 @@ public sealed record UpdateCollaboratorRequest(
     string? SchoolUnitId = null,
     ContractType ContractType = ContractType.PermanentClt,
     CollaboratorStatus Status = CollaboratorStatus.Active)
-    : IRequest<ResponseBase<CollaboratorResponse>>;
+    : IRequest<ResponseBase<CollaboratorResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a collaborator by identifier.</summary>
 public sealed record DeleteCollaboratorRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

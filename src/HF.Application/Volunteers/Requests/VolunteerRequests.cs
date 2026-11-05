@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Volunteers.Responses;
 using HF.Domain.Volunteers;
@@ -17,7 +18,7 @@ public sealed record CreateVolunteerRequest(
     string? EmergencyContactName = null,
     string? EmergencyContactPhone = null,
     VolunteerStatus Status = VolunteerStatus.Active)
-    : IRequest<ResponseBase<VolunteerResponse>>;
+    : IRequest<ResponseBase<VolunteerResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a volunteer by identifier.</summary>
 public sealed record GetVolunteerByIdRequest(string Id)
@@ -41,9 +42,9 @@ public sealed record UpdateVolunteerRequest(
     string? EmergencyContactName = null,
     string? EmergencyContactPhone = null,
     VolunteerStatus Status = VolunteerStatus.Active)
-    : IRequest<ResponseBase<VolunteerResponse>>;
+    : IRequest<ResponseBase<VolunteerResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a volunteer by identifier.</summary>
 public sealed record DeleteVolunteerRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

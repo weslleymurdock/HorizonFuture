@@ -1,4 +1,5 @@
 using HF.Application.Attendances.Responses;
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Domain.Attendances;
 using Mediator;
@@ -11,7 +12,7 @@ public sealed record CreateAttendanceRequest(
     string EnrollmentId,
     AttendanceStatus Status = AttendanceStatus.Present,
     string? Notes = null)
-    : IRequest<ResponseBase<AttendanceResponse>>;
+    : IRequest<ResponseBase<AttendanceResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get an attendance record by identifier.</summary>
 public sealed record GetAttendanceByIdRequest(string Id)
@@ -31,9 +32,9 @@ public sealed record UpdateAttendanceRequest(
     string EnrollmentId,
     AttendanceStatus Status = AttendanceStatus.Present,
     string? Notes = null)
-    : IRequest<ResponseBase<AttendanceResponse>>;
+    : IRequest<ResponseBase<AttendanceResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete an attendance record by identifier.</summary>
 public sealed record DeleteAttendanceRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

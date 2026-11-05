@@ -10,10 +10,12 @@ using HF.Client;
 using HF.Shared.Auth;
 using HF.Shared.Courses;
 using HF.Shared.Subjects;
+using HF.Shared.Students;
 using HF.Shared.PageModels;
 using HF.Shared.PageModels.Auth;
 using HF.Shared.PageModels.Courses;
 using HF.Shared.PageModels.Subjects;
+using HF.Shared.PageModels.Students;
 
 namespace HF.Shared;
 
@@ -51,6 +53,12 @@ public static class ServiceCollectionExtensions
             services.AddScoped<SubjectCreatePageModel>();
             services.AddScoped<SubjectDetailsPageModel>();
             services.AddScoped<SubjectEditPageModel>();
+
+            // Students PageModels
+            services.AddScoped<StudentListPageModel>();
+            services.AddScoped<StudentCreatePageModel>();
+            services.AddScoped<StudentDetailsPageModel>();
+            services.AddScoped<StudentEditPageModel>();
 
             return services;
         }
@@ -90,6 +98,7 @@ public static class ServiceCollectionExtensions
             services.TryAddScoped<IAuthService, AuthService>();
             services.TryAddScoped<ICourseService, CourseService>();
             services.TryAddScoped<ISubjectService, SubjectService>();
+            services.TryAddScoped<IStudentService, StudentService>();
 
             return services;
         }

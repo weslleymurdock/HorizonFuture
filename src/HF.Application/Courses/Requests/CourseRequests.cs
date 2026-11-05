@@ -1,3 +1,4 @@
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Application.Courses.Responses;
 using HF.Domain.Courses;
@@ -14,7 +15,7 @@ public sealed record CreateCourseRequest(
     string? SchoolUnitId = null,
     string? TargetAudience = null,
     CourseStatus Status = CourseStatus.Active)
-    : IRequest<ResponseBase<CourseResponse>>;
+    : IRequest<ResponseBase<CourseResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a course by identifier.</summary>
 public sealed record GetCourseByIdRequest(string Id)
@@ -36,9 +37,9 @@ public sealed record UpdateCourseRequest(
     string? SchoolUnitId = null,
     string? TargetAudience = null,
     CourseStatus Status = CourseStatus.Active)
-    : IRequest<ResponseBase<CourseResponse>>;
+    : IRequest<ResponseBase<CourseResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a course by identifier.</summary>
 public sealed record DeleteCourseRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

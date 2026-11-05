@@ -1,4 +1,5 @@
 using HF.Application.AssetsLiabilities.Responses;
+using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Responses;
 using HF.Domain.AssetsLiabilities;
 using Mediator;
@@ -18,7 +19,7 @@ public sealed record CreateLiabilityRequest(
     string? SchoolUnitId = null,
     LiabilityStatus Status = LiabilityStatus.Pending,
     string? Notes = null)
-    : IRequest<ResponseBase<LiabilityResponse>>;
+    : IRequest<ResponseBase<LiabilityResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a liability by identifier.</summary>
 public sealed record GetLiabilityByIdRequest(string Id)
@@ -45,9 +46,9 @@ public sealed record UpdateLiabilityRequest(
     string? SchoolUnitId = null,
     LiabilityStatus Status = LiabilityStatus.Pending,
     string? Notes = null)
-    : IRequest<ResponseBase<LiabilityResponse>>;
+    : IRequest<ResponseBase<LiabilityResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a liability by identifier.</summary>
 public sealed record DeleteLiabilityRequest(string Id)
-    : IRequest<ResponseBase<bool>>;
+    : IRequest<ResponseBase<bool>>, ITransactionalRequest;
 

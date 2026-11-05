@@ -1,0 +1,333 @@
+@page "/students/{Id}"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject StudentDetailsPageModel PageModel
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Default"
+               Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/students"))"
+               aria-label="Voltar para a lista de alunos">
+        Voltar para Alunos
+    </MudButton>
+
+    @if (PageModel.IsBusy)
+    {
+        <div class="pa-12 text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Carregando detalhes do aluno...</MudText>
+        </div>
+    }
+    else if (PageModel.IsNotFound)
+    {
+        <MudCard Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Aluno Não Encontrado</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                O aluno com identificador '@Id' não foi localizado ou pode ter sido removido.
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.List"
+                       OnClick="@(() => Navigation.NavigateTo("/students"))">
+                Ver Lista de Alunos
+            </MudButton>
+        </MudCard>
+    }
+    else if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
+            Acesso negado: você não tem permissão para visualizar este aluno (Students.Read).
+        </MudAlert>
+    }
+    else if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage) && PageModel.Student is null)
+    {
+        <MudCard Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Não Foi Possível Carregar o Aluno</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                @PageModel.ErrorMessage
+            </MudText>
+            <div class="d-flex justify-center gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => PageModel.LoadStudentAsync(Id))">
+                    Tentar Novamente
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.List"
+                           OnClick="@(() => Navigation.NavigateTo("/students"))">
+                    Ver Lista de Alunos
+                </MudButton>
+            </div>
+        </MudCard>
+    }
+    else if (PageModel.Student is not null)
+    {
+        var student = PageModel.Student;
+
+        @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                @PageModel.ErrorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                @PageModel.SuccessMessage
+            </MudAlert>
+        }
+
+        <MudCard Elevation="4" Class="pa-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <div class="d-flex flex-wrap align-center justify-space-between gap-2">
+                        <div>
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small" Class="font-weight-bold">
+                                    Matrícula: @student.RegistrationNumber
+                                </MudChip>
+                                <MudChip T="string" Color="@GetStatusColor(student.Status)" Variant="Variant.Filled" Size="Size.Small">
+                                    @GetStatusLabel(student.Status)
+                                </MudChip>
+                            </div>
+                            <MudText Typo="Typo.h5" GutterBottom="true">
+                                Aluno(a) - @student.RegistrationNumber
+                            </MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Unidade Escolar: @(string.IsNullOrWhiteSpace(student.SchoolUnitId) ? "Geral / Não vinculada" : student.SchoolUnitId)
+                            </MudText>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => Navigation.NavigateTo($"/students/{student.Id}/edit"))"
+                                       aria-label="Editar aluno">
+                                Editar
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Delete"
+                                       Disabled="@PageModel.IsDeleting"
+                                       OnClick="ConfirmDeleteAsync"
+                                       aria-label="Excluir aluno">
+                                @if (PageModel.IsDeleting)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                                    <span>Excluindo...</span>
+                                }
+                                else
+                                {
+                                    <span>Excluir</span>
+                                }
+                            </MudButton>
+                        </div>
+                    </div>
+                </CardHeaderContent>
+            </MudCardHeader>
+
+            <MudCardContent>
+                <MudGrid Spacing="3">
+                    <!-- Bloco de Identificação -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1" Color="Color.Primary">
+                            Dados de Identificação
+                        </MudText>
+                        <MudDivider Class="mb-3" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Matrícula</MudText>
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">@student.RegistrationNumber</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID do Usuário</MudText>
+                        <MudText Typo="Typo.body1">@student.UserId</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Nascimento</MudText>
+                        <MudText Typo="Typo.body1">@student.DateOfBirth.ToString("dd/MM/yyyy")</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Ingresso</MudText>
+                        <MudText Typo="Typo.body1">@student.EnrollmentDate.ToString("dd/MM/yyyy")</MudText>
+                    </MudItem>
+
+                    <!-- Bloco de Responsável e Contatos -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mt-4 mb-1" Color="Color.Primary">
+                            Responsável e Contatos
+                        </MudText>
+                        <MudDivider Class="mb-3" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Nome do Responsável</MudText>
+                        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(student.GuardianName) ? "Não informado" : student.GuardianName)</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Parentesco</MudText>
+                        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(student.GuardianRelationship) ? "Não informado" : student.GuardianRelationship)</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Telefone do Responsável</MudText>
+                        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(student.GuardianPhone) ? "Não informado" : student.GuardianPhone)</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Contato de Emergência</MudText>
+                        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(student.EmergencyContactName) ? "Não informado" : student.EmergencyContactName)</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Telefone de Emergência</MudText>
+                        <MudText Typo="Typo.body1">@(string.IsNullOrWhiteSpace(student.EmergencyContactPhone) ? "Não informado" : student.EmergencyContactPhone)</MudText>
+                    </MudItem>
+
+                    <!-- Bloco de Necessidades Especiais e Saúde -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mt-4 mb-1" Color="Color.Primary">
+                            Necessidades Especiais e Informações de Saúde
+                        </MudText>
+                        <MudDivider Class="mb-3" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudCard Outlined="true" Class="pa-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">
+                                Necessidades Especiais e Acessibilidade
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mt-1">
+                                @(string.IsNullOrWhiteSpace(student.SpecialNeeds) ? "Nenhuma necessidade especial informada." : student.SpecialNeeds)
+                            </MudText>
+                        </MudCard>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudCard Outlined="true" Class="pa-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-weight-bold">
+                                Observações Médicas
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mt-1">
+                                @(string.IsNullOrWhiteSpace(student.MedicalNotes) ? "Nenhuma observação médica informada." : student.MedicalNotes)
+                            </MudText>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Metadados de Auditoria -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Class="font-weight-bold mt-4 mb-1" Color="Color.Secondary">
+                            Auditoria do Registro
+                        </MudText>
+                        <MudDivider Class="mb-3" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Criação</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(student.CreatedAt.HasValue ? student.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "-")
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Criado Por</MudText>
+                        <MudText Typo="Typo.body2">@(string.IsNullOrWhiteSpace(student.CreatedBy) ? "-" : student.CreatedBy)</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Última Modificação</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(student.UpdatedAt.HasValue ? student.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Nunca modificado")
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Atualizado Por</MudText>
+                        <MudText Typo="Typo.body2">@(string.IsNullOrWhiteSpace(student.UpdatedBy) ? "-" : student.UpdatedBy)</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        await PageModel.LoadStudentAsync(Id);
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (PageModel.Student is null) return;
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão",
+            $"Deseja realmente excluir o aluno com matrícula '{PageModel.Student.RegistrationNumber}'? Esta operação é definitiva.",
+            yesText: "Excluir Aluno",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var success = await PageModel.DeleteStudentAsync();
+            if (success)
+            {
+                Navigation.NavigateTo("/students");
+            }
+        }
+    }
+
+    private static Color GetStatusColor(StudentStatus status) => status switch
+    {
+        StudentStatus.Active => Color.Success,
+        StudentStatus.Inactive => Color.Warning,
+        StudentStatus.Graduated => Color.Info,
+        StudentStatus.Suspended => Color.Error,
+        StudentStatus.Transferred => Color.Dark,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(StudentStatus status) => status switch
+    {
+        StudentStatus.Active => "Ativo",
+        StudentStatus.Inactive => "Inativo",
+        StudentStatus.Graduated => "Graduado",
+        StudentStatus.Suspended => "Suspenso",
+        StudentStatus.Transferred => "Transferido",
+        _ => status.ToString()
+    };
+}
+
