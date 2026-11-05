@@ -27,6 +27,22 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
+		<PackageReference Include="Microsoft.Kiota.Bundle" Version="2.1.2" />
 	</ItemGroup>
+
+	<PropertyGroup>
+		<KiotaClientName Condition="'$(KiotaClientName)' == ''">ApiClient</KiotaClientName>
+		<KiotaClientNamespace Condition="'$(KiotaClientNamespace)' == ''">HF.Client</KiotaClientNamespace>
+	</PropertyGroup>
+
+	<!-- Kiota Client Generation Target (Opt-in only: dotnet build -t:GenerateKiotaClient ./src/HF.Client) -->
+	<Target Name="GenerateKiotaClient">
+		<Exec Condition="!$([MSBuild]::IsOSPlatform('windows'))"
+		      Command="bash &quot;$(MSBuildThisFileDirectory)../../scripts/generate-client.sh&quot;"
+		      EnvironmentVariables="KIOTA_CLIENT_NAME=$(KiotaClientName);KIOTA_CLIENT_NAMESPACE=$(KiotaClientNamespace)" />
+		<Exec Condition="$([MSBuild]::IsOSPlatform('windows'))"
+		      Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)../../scripts/generate-client.ps1&quot; -ClientName &quot;$(KiotaClientName)&quot; -ClientNamespace &quot;$(KiotaClientNamespace)&quot;" />
+		<Message Importance="high" Text="Kiota client generated successfully in $(MSBuildThisFileDirectory)Generated." />
+	</Target>
 
 </Project>
