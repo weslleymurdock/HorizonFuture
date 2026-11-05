@@ -1,11 +1,25 @@
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
     [Parameter]
     public string? ReturnUrl { get; set; }
 
-    protected override void OnInitialized()
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
+        var authState = AuthenticationStateTask != null
+            ? await AuthenticationStateTask
+            : await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            // User is already authenticated. Do not bounce to login.
+            return;
+        }
+
         var currentUri = Navigation.ToBaseRelativePath(Navigation.Uri);
         var targetPath = !string.IsNullOrWhiteSpace(currentUri) && !currentUri.StartsWith("/")
             ? $"/{currentUri}"

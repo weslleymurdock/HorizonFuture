@@ -31,7 +31,9 @@ public class HorizonAuthorizationPolicyProvider : DefaultAuthorizationPolicyProv
             .RequireAssertion(ctx =>
                 ctx.User.HasClaim(c => (c.Type == "permission" || c.Type == "Permission") &&
                                        string.Equals(c.Value, policyName, StringComparison.OrdinalIgnoreCase)) ||
-                ctx.User.IsInRole("Admin"))
+                ctx.User.IsInRole("Admin") ||
+                ctx.User.HasClaim(c => (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role" || c.Type == "Role") &&
+                                       string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase)))
             .Build();
     }
 }

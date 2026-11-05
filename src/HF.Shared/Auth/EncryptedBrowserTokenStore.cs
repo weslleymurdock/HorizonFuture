@@ -27,6 +27,9 @@ public class EncryptedBrowserTokenStore : ITokenStore
     private static readonly byte[] HmacKey = DeriveKey("HmacSigningKey");
 
     private readonly IJSRuntime _jsRuntime;
+    private string? _cachedAccessToken;
+    private string? _cachedRefreshToken;
+    private bool _hasLoadedFromStorage;
     public event EventHandler? TokensChanged;
 
     public EncryptedBrowserTokenStore(IJSRuntime jsRuntime)
@@ -36,16 +39,37 @@ public class EncryptedBrowserTokenStore : ITokenStore
 
     public async Task<string?> GetAccessTokenAsync()
     {
-        return await ReadEncryptedAsync(AccessTokenKey);
+        if (_cachedAccessToken != null)
+        {
+            return _cachedAccessToken;
+        }
+
+        if (!_hasLoadedFromStorage)
+        {
+            _cachedAccessToken = await ReadEncryptedAsync(AccessTokenKey);
+            _hasLoadedFromStorage = true;
+        }
+
+        return _cachedAccessToken;
     }
 
     public async Task<string?> GetRefreshTokenAsync()
     {
-        return await ReadEncryptedAsync(RefreshTokenKey);
+        if (_cachedRefreshToken != null)
+        {
+            return _cachedRefreshToken;
+        }
+
+        _cachedRefreshToken = await ReadEncryptedAsync(RefreshTokenKey);
+        return _cachedRefreshToken;
     }
 
     public async Task SaveTokensAsync(string accessToken, string? refreshToken)
     {
+        _cachedAccessToken = accessToken;
+        _cachedRefreshToken = refreshToken;
+        _hasLoadedFromStorage = true;
+
         await WriteEncryptedAsync(AccessTokenKey, accessToken);
         if (!string.IsNullOrWhiteSpace(refreshToken))
         {
@@ -61,6 +85,10 @@ public class EncryptedBrowserTokenStore : ITokenStore
 
     public async Task ClearTokensAsync()
     {
+        _cachedAccessToken = null;
+        _cachedRefreshToken = null;
+        _hasLoadedFromStorage = true;
+
         await RemoveKeyAsync(AccessTokenKey);
         await RemoveKeyAsync(RefreshTokenKey);
         TokensChanged?.Invoke(this, EventArgs.Empty);

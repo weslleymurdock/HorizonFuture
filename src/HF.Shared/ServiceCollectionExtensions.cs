@@ -83,8 +83,23 @@ public static class ServiceCollectionExtensions
 
         public IServiceCollection AddHorizonClient(string? customBaseUrl = null)
         {
-            services.AddAuthorizationCore();
-            services.TryAddSingleton<IAuthorizationPolicyProvider, HorizonAuthorizationPolicyProvider>();
+            services.AddLogging();
+            services.AddAuthorizationCore(options =>
+            {
+                foreach (var policy in AppPolicies.All)
+                {
+                    options.AddPolicy(policy, builder => builder
+                        .RequireAuthenticatedUser()
+                        .RequireAssertion(ctx =>
+                            ctx.User.HasClaim(c => (c.Type == "permission" || c.Type == "Permission") &&
+                                                   string.Equals(c.Value, policy, StringComparison.OrdinalIgnoreCase)) ||
+                            ctx.User.IsInRole("Admin") ||
+                            ctx.User.HasClaim(c => (c.Type == System.Security.Claims.ClaimTypes.Role || c.Type == "role" || c.Type == "Role") &&
+                                                   string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase))));
+                }
+            });
+
+            services.Replace(ServiceDescriptor.Singleton<IAuthorizationPolicyProvider, HorizonAuthorizationPolicyProvider>());
             services.TryAddScoped<ITokenStore, InMemoryTokenStore>();
             services.TryAddScoped<IUserAccessService, UserAccessService>();
             services.TryAddScoped<AuthenticationStateProvider, HorizonAuthenticationStateProvider>();

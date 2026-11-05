@@ -40,5 +40,15 @@ public static class AppPolicies
     public const string RolesManage = "Roles.Manage";
     public const string PermissionsRead = "Permissions.Read";
     public const string PermissionsManage = "Permissions.Manage";
+
+    public static readonly System.Collections.Generic.IReadOnlyList<string> All = new[]
+    {
+        StudentsRead, StudentsCreate, StudentsUpdate, StudentsDelete,
+        TeachersRead, TeachersCreate, TeachersUpdate, TeachersDelete,
+        CoursesRead, CoursesCreate, CoursesUpdate, CoursesDelete,
+        SubjectsRead, SubjectsCreate, SubjectsUpdate, SubjectsDelete,
+        EnrollmentsRead, EnrollmentsCreate, EnrollmentsUpdate, EnrollmentsDelete,
+        RolesRead, RolesManage, PermissionsRead, PermissionsManage
+    };
 }
 

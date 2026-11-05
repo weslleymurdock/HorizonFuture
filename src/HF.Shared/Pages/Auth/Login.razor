@@ -120,16 +120,45 @@
 </MudContainer>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? CascadingAuthState { get; set; }
+
     [SupplyParameterFromQuery]
     public string? ReturnUrl { get; set; }
+
+    private bool _hasNavigated;
 
     protected override async Task OnInitializedAsync()
     {
         PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
+        await CheckAuthenticatedAndRedirectAsync();
+    }
 
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (authState.User.Identity?.IsAuthenticated == true)
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckAuthenticatedAndRedirectAsync();
+    }
+
+    private async Task CheckAuthenticatedAndRedirectAsync()
+    {
+        if (_hasNavigated)
         {
+            return;
+        }
+
+        AuthenticationState? authState = null;
+        if (CascadingAuthState != null)
+        {
+            authState = await CascadingAuthState;
+        }
+        else
+        {
+            authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        }
+
+        if (authState?.User.Identity?.IsAuthenticated == true)
+        {
+            _hasNavigated = true;
             var destination = IsSafeLocalUrl(ReturnUrl) ? ReturnUrl! : "/courses";
             Navigation.NavigateTo(destination, replace: true);
         }
@@ -137,7 +166,7 @@
 
     private async Task SubmitAsync()
     {
-        if (PageModel.IsBusy)
+        if (PageModel.IsBusy || _hasNavigated)
         {
             return;
         }
@@ -145,10 +174,25 @@
         var success = await PageModel.LoginAsync();
         if (success)
         {
-            // Await confirmation of authenticated state before navigating
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            var destination = IsSafeLocalUrl(ReturnUrl) ? ReturnUrl! : "/courses";
-            Navigation.NavigateTo(destination, replace: true);
+            // Confirm and notify the authentication tree with the updated session
+            if (AuthStateProvider is HorizonAuthenticationStateProvider horizonProvider)
+            {
+                await horizonProvider.RefreshAuthenticationStateAsync();
+            }
+            else
+            {
+                await AuthStateProvider.GetAuthenticationStateAsync();
+            }
+
+            // Yield execution to allow CascadingAuthenticationState to propagate to all descendants
+            await Task.Yield();
+
+            if (!_hasNavigated)
+            {
+                _hasNavigated = true;
+                var destination = IsSafeLocalUrl(ReturnUrl) ? ReturnUrl! : "/courses";
+                Navigation.NavigateTo(destination, replace: true);
+            }
         }
         else
         {

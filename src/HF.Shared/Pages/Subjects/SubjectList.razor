@@ -65,6 +65,7 @@
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Immediate="true"
                               Clearable="true"
+                              HelperText="Filtrar disciplinas por nome ou código"
                               aria-label="Filtrar disciplinas por nome ou código" />
             </MudItem>
 
@@ -75,6 +76,7 @@
                            Variant="Variant.Outlined"
                            Margin="Margin.Dense"
                            Clearable="true"
+                           HelperText="Filtro opcional por status da disciplina"
                            aria-label="Filtrar disciplinas por status">
                     <MudSelectItem T="SubjectStatus?" Value="@((SubjectStatus?)null)">Todos os Status</MudSelectItem>
                     <MudSelectItem T="SubjectStatus?" Value="@((SubjectStatus?)SubjectStatus.Active)">Ativo</MudSelectItem>

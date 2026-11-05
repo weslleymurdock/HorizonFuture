@@ -21,6 +21,7 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
     private readonly IUserAccessService? _userAccessService;
     private readonly IServiceProvider _serviceProvider;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private readonly SemaphoreSlim _evalLock = new(1, 1);
     private bool _isDisposed;
 
     public HorizonAuthenticationStateProvider(
@@ -48,12 +49,16 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        await _evalLock.WaitAsync();
         try
         {
             var accessToken = await _tokenStore.GetAccessTokenAsync();
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                _userAccessService?.ClearAccess();
+                if (_userAccessService != null && _userAccessService.IsLoaded)
+                {
+                    _userAccessService.ClearAccess();
+                }
                 return new AuthenticationState(AnonymousPrincipal);
             }
 
@@ -63,7 +68,10 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
                 var refreshToken = await _tokenStore.GetRefreshTokenAsync();
                 if (string.IsNullOrWhiteSpace(refreshToken))
                 {
-                    _userAccessService?.ClearAccess();
+                    if (_userAccessService != null && _userAccessService.IsLoaded)
+                    {
+                        _userAccessService.ClearAccess();
+                    }
                     await _tokenStore.ClearTokensAsync();
                     return new AuthenticationState(AnonymousPrincipal);
                 }
@@ -75,7 +83,10 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
                     return new AuthenticationState(refreshedPrincipal);
                 }
 
-                _userAccessService?.ClearAccess();
+                if (_userAccessService != null && _userAccessService.IsLoaded)
+                {
+                    _userAccessService.ClearAccess();
+                }
                 await _tokenStore.ClearTokensAsync();
                 return new AuthenticationState(AnonymousPrincipal);
             }
@@ -94,6 +105,10 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
             // Fallback safely to unauthenticated state on unexpected storage error
             return new AuthenticationState(AnonymousPrincipal);
         }
+        finally
+        {
+            _evalLock.Release();
+        }
     }
 
     public void NotifyUserAuthentication(string accessToken)
@@ -102,20 +117,40 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
     }
 
+    public async Task<AuthenticationState> RefreshAuthenticationStateAsync()
+    {
+        var state = await GetAuthenticationStateAsync();
+        NotifyAuthenticationStateChanged(Task.FromResult(state));
+        return state;
+    }
+
     public void NotifyUserLogout()
     {
         _userAccessService?.ClearAccess();
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(AnonymousPrincipal)));
     }
 
-    private void OnTokensChanged(object? sender, EventArgs e)
+    private async void OnTokensChanged(object? sender, EventArgs e)
     {
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        await NotifyCurrentStateAsync();
     }
 
-    private void OnAccessChanged(object? sender, EventArgs e)
+    private async void OnAccessChanged(object? sender, EventArgs e)
     {
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+        await NotifyCurrentStateAsync();
+    }
+
+    private async Task NotifyCurrentStateAsync()
+    {
+        try
+        {
+            var state = await GetAuthenticationStateAsync();
+            NotifyAuthenticationStateChanged(Task.FromResult(state));
+        }
+        catch
+        {
+            NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(AnonymousPrincipal)));
+        }
     }
 
     private async Task<ClaimsPrincipal?> TryRefreshSessionAsync(string refreshToken)
@@ -172,6 +207,10 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
                 {
                     claims.Add(new Claim(ClaimTypes.Role, role));
                 }
+                if (!claims.Any(c => (c.Type == "role" || c.Type == "Role") && string.Equals(c.Value, role, StringComparison.OrdinalIgnoreCase)))
+                {
+                    claims.Add(new Claim("role", role));
+                }
             }
 
             foreach (var policy in _userAccessService.CurrentPolicies)
@@ -183,7 +222,7 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
             }
         }
 
-        var identity = new ClaimsIdentity(claims, "Bearer");
+        var identity = new ClaimsIdentity(claims, "Bearer", ClaimTypes.Name, ClaimTypes.Role);
         return new ClaimsPrincipal(identity);
     }
 
@@ -198,6 +237,7 @@ public class HorizonAuthenticationStateProvider : AuthenticationStateProvider, I
                 _userAccessService.AccessChanged -= OnAccessChanged;
             }
             _refreshLock.Dispose();
+            _evalLock.Dispose();
         }
     }
 }

@@ -503,7 +503,7 @@ public class SharedAuthenticationAndSessionTests
     #region 5. Dependency Injection Registration Tests
 
     [Fact]
-    public void AddHorizonClient_RegistersAuthInfrastructure_WithoutInMemoryStoreTakingPrecedenceInHosts()
+    public async Task AddHorizonClient_RegistersAuthInfrastructure_WithoutInMemoryStoreTakingPrecedenceInHosts()
     {
         var services = new ServiceCollection();
 
@@ -524,6 +524,12 @@ public class SharedAuthenticationAndSessionTests
 
         var kiotaAuthProvider = sp.GetRequiredService<Microsoft.Kiota.Abstractions.Authentication.IAuthenticationProvider>();
         Assert.IsType<KiotaAuthenticationProvider>(kiotaAuthProvider);
+
+        var policyProvider = sp.GetRequiredService<IAuthorizationPolicyProvider>();
+        Assert.IsType<HorizonAuthorizationPolicyProvider>(policyProvider);
+
+        var coursesPolicy = await policyProvider.GetPolicyAsync(AppPolicies.CoursesRead);
+        Assert.NotNull(coursesPolicy);
     }
 
     #endregion
@@ -616,6 +622,173 @@ public class SharedAuthenticationAndSessionTests
         var result = await model.LoginAsync();
 
         Assert.False(result);
+    }
+
+    [Fact]
+    public void UserAccessService_ClearAccess_WhenAlreadyCleared_DoesNotFireAccessChanged()
+    {
+        var fakeAuth = new FakeAuthService();
+        var tokenStore = new InMemoryTokenStore();
+        var userAccess = new UserAccessService(fakeAuth, tokenStore);
+
+        int accessChangedFired = 0;
+        userAccess.AccessChanged += (_, _) => accessChangedFired++;
+
+        // Initially empty: clearing should be a no-op and NOT fire event
+        userAccess.ClearAccess();
+        userAccess.ClearAccess();
+
+        Assert.Equal(0, accessChangedFired);
+
+        // When access is present, clearing must fire exactly once
+        userAccess.SetAccess(new[] { "Teacher" }, new[] { "Courses.Read" });
+        Assert.Equal(1, accessChangedFired);
+
+        userAccess.ClearAccess();
+        Assert.Equal(2, accessChangedFired);
+
+        // Subsequent clear on empty state must not fire again
+        userAccess.ClearAccess();
+        Assert.Equal(2, accessChangedFired);
+    }
+
+    [Fact]
+    public async Task HorizonAuthenticationStateProvider_AnonymousStartup_DoesNotTriggerRecursiveLoop()
+    {
+        var fakeAuth = new FakeAuthService();
+        var tokenStore = new InMemoryTokenStore();
+        var userAccess = new UserAccessService(fakeAuth, tokenStore);
+        var services = new ServiceCollection().BuildServiceProvider();
+
+        using var provider = new HorizonAuthenticationStateProvider(tokenStore, userAccess, services);
+
+        int stateChangedCount = 0;
+        provider.AuthenticationStateChanged += _ => stateChangedCount++;
+
+        // Querying authentication state on application startup
+        var state = await provider.GetAuthenticationStateAsync();
+
+        Assert.NotNull(state);
+        Assert.False(state.User.Identity?.IsAuthenticated);
+        // Evaluating state must not produce an infinite cascade of state change notifications
+        Assert.Equal(0, stateChangedCount);
+    }
+
+    [Fact]
+    public async Task HorizonAuthorization_ResolvesAndEvaluatesPoliciesInContainer_ForAuthenticatedAndAnonymousUsers()
+    {
+        var services = new ServiceCollection();
+        services.AddHorizonClient("http://localhost:8080");
+
+        var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var sp = scope.ServiceProvider;
+
+        var policyProvider = sp.GetRequiredService<IAuthorizationPolicyProvider>();
+        var authService = sp.GetRequiredService<IAuthorizationService>();
+
+        // 1. Verify pre-registered canonical policy (e.g., Courses.Read)
+        var coursesPolicy = await policyProvider.GetPolicyAsync(AppPolicies.CoursesRead);
+        Assert.NotNull(coursesPolicy);
+
+        // 2. Verify dynamic policy synthesis for arbitrary permission name
+        var dynamicPolicy = await policyProvider.GetPolicyAsync("Custom.Dynamic.Permission");
+        Assert.NotNull(dynamicPolicy);
+
+        // 3. User with matching permission succeeds
+        var userWithPermission = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("permission", AppPolicies.CoursesRead)
+        }, "Bearer", ClaimTypes.Name, ClaimTypes.Role));
+        var permResult = await authService.AuthorizeAsync(userWithPermission, null, AppPolicies.CoursesRead);
+        Assert.True(permResult.Succeeded);
+
+        // 4. User with Admin role succeeds
+        var adminUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Role, "Admin")
+        }, "Bearer", ClaimTypes.Name, ClaimTypes.Role));
+        var adminResult = await authService.AuthorizeAsync(adminUser, null, AppPolicies.CoursesRead);
+        Assert.True(adminResult.Succeeded);
+
+        // 5. User without permission fails
+        var userWithoutPermission = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim("permission", "Other.Permission")
+        }, "Bearer", ClaimTypes.Name, ClaimTypes.Role));
+        var failResult = await authService.AuthorizeAsync(userWithoutPermission, null, AppPolicies.CoursesRead);
+        Assert.False(failResult.Succeeded);
+
+        // 6. Anonymous user fails (DenyAnonymousAuthorizationRequirement)
+        var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
+        var anonResult = await authService.AuthorizeAsync(anonymousUser, null, AppPolicies.CoursesRead);
+        Assert.False(anonResult.Succeeded);
+    }
+
+    [Fact]
+    public async Task HorizonAuthenticationStateProvider_RefreshAuthenticationStateAsync_NotifiesSubscribers_WithResolvedState()
+    {
+        var services = new ServiceCollection();
+        var fakeAuth = new FakeAuthService();
+        var tokenStore = new InMemoryTokenStore();
+        var userAccess = new UserAccessService(fakeAuth, tokenStore);
+
+        services.AddSingleton<ITokenStore>(tokenStore);
+        services.AddSingleton<IUserAccessService>(userAccess);
+        services.AddSingleton<IAuthService>(fakeAuth);
+        services.AddScoped<AuthenticationStateProvider, HorizonAuthenticationStateProvider>();
+        var sp = services.BuildServiceProvider();
+
+        var provider = (HorizonAuthenticationStateProvider)sp.GetRequiredService<AuthenticationStateProvider>();
+
+        int changeNotificationCount = 0;
+        AuthenticationState? notifiedState = null;
+        provider.AuthenticationStateChanged += task =>
+        {
+            changeNotificationCount++;
+            notifiedState = task.Result;
+        };
+
+        // Populate valid token & user access
+        var jwt = CreateSyntheticJwt("usr-123", "user@horizon.org", new[] { "Admin" }, DateTimeOffset.UtcNow.AddHours(2).ToUnixTimeSeconds());
+        await tokenStore.SaveTokensAsync(jwt, "refresh-token");
+        userAccess.SetAccess(new[] { "Admin" }, new[] { AppPolicies.CoursesRead });
+
+        // Trigger explicit refresh
+        var refreshedState = await provider.RefreshAuthenticationStateAsync();
+
+        Assert.True(refreshedState.User.Identity?.IsAuthenticated);
+        Assert.True(changeNotificationCount > 0);
+        Assert.NotNull(notifiedState);
+        Assert.True(notifiedState!.User.Identity?.IsAuthenticated);
+        Assert.True(notifiedState.User.IsInRole("Admin"));
+        Assert.Contains(notifiedState.User.Claims, c => c.Type == "permission" && c.Value == AppPolicies.CoursesRead);
+    }
+
+    [Fact]
+    public async Task EncryptedBrowserTokenStore_InMemoryCache_ProvidesImmediateAccess_AfterSave()
+    {
+        var mockJs = new MockJsRuntime();
+        var store = new EncryptedBrowserTokenStore(mockJs);
+
+        await store.SaveTokensAsync("access-test-token", "refresh-test-token");
+
+        // Subsequent reads must return cached token values immediately
+        var at = await store.GetAccessTokenAsync();
+        var rt = await store.GetRefreshTokenAsync();
+
+        Assert.Equal("access-test-token", at);
+        Assert.Equal("refresh-test-token", rt);
+
+        // Clearing must reset memory cache and invoke change event
+        bool eventFired = false;
+        store.TokensChanged += (_, _) => eventFired = true;
+
+        await store.ClearTokensAsync();
+
+        Assert.Null(await store.GetAccessTokenAsync());
+        Assert.Null(await store.GetRefreshTokenAsync());
+        Assert.True(eventFired);
     }
 
     #endregion

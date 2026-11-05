@@ -16,7 +16,8 @@ public class UserAccessService : IUserAccessService
 {
     private readonly IAuthService _authService;
     private readonly ITokenStore _tokenStore;
-    private readonly SemaphoreSlim _lock = new(1, 1);
+    private readonly SemaphoreSlim _asyncLock = new(1, 1);
+    private readonly object _stateLock = new();
 
     private List<string> _currentRoles = new();
     private List<string> _currentPolicies = new();
@@ -57,29 +58,45 @@ public class UserAccessService : IUserAccessService
 
     public async Task<bool> LoadCurrentAccessAsync(CancellationToken ct = default)
     {
-        await _lock.WaitAsync(ct);
+        await _asyncLock.WaitAsync(ct);
+        bool notifyChanged = false;
         try
         {
             var token = await _tokenStore.GetAccessTokenAsync();
             if (string.IsNullOrWhiteSpace(token))
             {
-                ClearAccessInternal();
+                lock (_stateLock)
+                {
+                    notifyChanged = ClearInternal();
+                }
                 return false;
             }
 
             var result = await _authService.GetCurrentUserAccessAsync(ct);
             if (result.Succeeded && result.Data is not null)
             {
-                _currentRoles = result.Data.Roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                _currentPolicies = result.Data.Policies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                _isLoaded = true;
-                AccessChanged?.Invoke(this, EventArgs.Empty);
+                var newRoles = result.Data.Roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var newPolicies = result.Data.Policies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+                lock (_stateLock)
+                {
+                    notifyChanged = !_isLoaded ||
+                                    !_currentRoles.SequenceEqual(newRoles, StringComparer.OrdinalIgnoreCase) ||
+                                    !_currentPolicies.SequenceEqual(newPolicies, StringComparer.OrdinalIgnoreCase);
+
+                    _currentRoles = newRoles;
+                    _currentPolicies = newPolicies;
+                    _isLoaded = true;
+                }
                 return true;
             }
 
             if (result.StatusCode == 401)
             {
-                ClearAccessInternal();
+                lock (_stateLock)
+                {
+                    notifyChanged = ClearInternal();
+                }
                 await _tokenStore.ClearTokensAsync();
                 return false;
             }
@@ -96,9 +113,12 @@ public class UserAccessService : IUserAccessService
 
                 if (jwtRoles.Count > 0)
                 {
-                    _currentRoles = jwtRoles;
-                    _isLoaded = true;
-                    AccessChanged?.Invoke(this, EventArgs.Empty);
+                    lock (_stateLock)
+                    {
+                        notifyChanged = !_isLoaded || !_currentRoles.SequenceEqual(jwtRoles, StringComparer.OrdinalIgnoreCase);
+                        _currentRoles = jwtRoles;
+                        _isLoaded = true;
+                    }
                 }
             }
 
@@ -110,29 +130,58 @@ public class UserAccessService : IUserAccessService
         }
         finally
         {
-            _lock.Release();
+            _asyncLock.Release();
+            if (notifyChanged)
+            {
+                AccessChanged?.Invoke(this, EventArgs.Empty);
+            }
         }
     }
 
     public void SetAccess(IEnumerable<string> roles, IEnumerable<string> policies)
     {
-        _currentRoles = roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        _currentPolicies = policies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        _isLoaded = true;
-        AccessChanged?.Invoke(this, EventArgs.Empty);
+        bool notifyChanged = false;
+        lock (_stateLock)
+        {
+            var newRoles = roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var newPolicies = policies.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            notifyChanged = !_isLoaded ||
+                            !_currentRoles.SequenceEqual(newRoles, StringComparer.OrdinalIgnoreCase) ||
+                            !_currentPolicies.SequenceEqual(newPolicies, StringComparer.OrdinalIgnoreCase);
+
+            _currentRoles = newRoles;
+            _currentPolicies = newPolicies;
+            _isLoaded = true;
+        }
+
+        if (notifyChanged)
+        {
+            AccessChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public void ClearAccess()
     {
-        ClearAccessInternal();
+        bool notifyChanged = false;
+        lock (_stateLock)
+        {
+            notifyChanged = ClearInternal();
+        }
+
+        if (notifyChanged)
+        {
+            AccessChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
-    private void ClearAccessInternal()
+    private bool ClearInternal()
     {
+        bool hadAccess = _isLoaded || _currentRoles.Count > 0 || _currentPolicies.Count > 0;
         _currentRoles = new List<string>();
         _currentPolicies = new List<string>();
         _isLoaded = false;
-        AccessChanged?.Invoke(this, EventArgs.Empty);
+        return hadAccess;
     }
 }
 

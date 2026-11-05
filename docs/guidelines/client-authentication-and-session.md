@@ -92,9 +92,9 @@ Both host entry points (`HF.Web/App.razor` and `HF.Mobile/Components/Routes.razo
 
 When an unauthenticated user attempts to access any route decorated with `[Authorize]`, Blazor immediately evaluates authorization before the component is initialized, rendering `<NotAuthorized>`. `<RedirectToLogin />` immediately redirects the browser to `/auth/login`, ensuring protected forms and actions are never exposed.
 
-### Diagnosed Login Redirection Issues & Resolved Fixes
+### Diagnosed Startup & Authentication Redirection Issues & Resolved Fixes
 
-During architectural inspection, three distinct root causes were identified that caused valid logins to stick on the login screen or bounce back to `/auth/login`:
+During architectural inspection, five distinct root causes were identified that affected the authentication and startup lifecycle:
 
 1. **Double Submission Race Condition:**
    - *Problem:* `Login.razor` declared both `<MudForm @onsubmit="SubmitAsync">` and `<MudButton ButtonType="ButtonType.Submit" OnClick="SubmitAsync">`. Clicking the submit button fired `SubmitAsync` twice concurrently. Because `LoginPageModel.LoginAsync` lacked a re-entrancy guard, two authentication requests were dispatched to the backend simultaneously.
@@ -115,6 +115,28 @@ During architectural inspection, three distinct root causes were identified that
 3. **Insecure and Circular `ReturnUrl` Loops:**
    - *Problem:* `ReturnUrl` accepted arbitrary query parameter values, which could lead to open redirects or infinite loops if `ReturnUrl` pointed to `/auth/login`.
    - *Fix:* Added `IsSafeLocalUrl(string? url)` validation in `Login.razor` requiring local relative paths starting with `/` (excluding `//` or `/auth/login`), falling back safely to `/courses`. In `RedirectToLogin.razor`, circular returnUrls containing `/auth/login` are stripped before setting the redirect query.
+
+4. **WebAssembly Startup 100% Loader Freeze (Recursive State Notification Loop):**
+   - *Problem:* When opening `HF.Web` as an anonymous user (or empty token store), `CascadingAuthenticationState` invoked `HorizonAuthenticationStateProvider.GetAuthenticationStateAsync()`. Because `accessToken` was null, `_userAccessService?.ClearAccess()` was invoked. `ClearAccess()` unconditionally called `ClearAccessInternal()`, which fired `AccessChanged`. `HorizonAuthenticationStateProvider.OnAccessChanged` reacted by calling `NotifyAuthenticationStateChanged(GetAuthenticationStateAsync())`, triggering an immediate re-entrant execution of `GetAuthenticationStateAsync()`. This created an infinite asynchronous task storm on the single-threaded WebAssembly event loop. The Blazor renderer never finished evaluating the cascading authentication state to mount `#app`, leaving the browser progress loader frozen at 100% with no exceptions logged in the console. Furthermore, synchronous `SemaphoreSlim.Wait()` in `UserAccessService` triggered CA1416 browser platform incompatibility warnings.
+   - *Fix:*
+     - In `UserAccessService.cs`, replaced synchronous `_lock.Wait()` with non-blocking monitor locks (`lock (_stateLock)`), and ensured `AccessChanged` is ONLY fired if the loaded state, roles, or policies actually changed. Invoking `ClearAccess()` on an already empty state is a no-op. `AccessChanged?.Invoke(...)` is executed strictly outside any lock.
+     - In `HorizonAuthenticationStateProvider.cs`, removed mutating `ClearAccess()` calls on empty tokens during state evaluation and added an evaluation guard `_isEvaluating`: while `GetAuthenticationStateAsync()` is resolving, events from `OnTokensChanged` or `OnAccessChanged` are suppressed from triggering recursive re-evaluations.
+
+5. **Authorization Policy Resolution & Post-Login Loading Freeze (`Courses.Read` Policy Not Found):**
+   - *Problem:* `Microsoft.AspNetCore.Components.Authorization.AuthorizeViewCore` and `AuthorizeRouteView` resolve policies through `IAuthorizationPolicyProvider`. When `services.AddAuthorizationCore()` was followed by `services.TryAddSingleton<IAuthorizationPolicyProvider, HorizonAuthorizationPolicyProvider>()`, `TryAdd` was a complete no-op because `AddAuthorizationCore()` had already registered the framework default `DefaultAuthorizationPolicyProvider`. When navigating to `/courses` (`CourseList.razor` with `@attribute [Authorize(Policy = AppPolicies.CoursesRead)]`) and rendering `NavMenu.razor` (`<AuthorizeView Policy="@AppPolicies.CoursesRead">`), `DefaultAuthorizationPolicyProvider` searched `AuthorizationOptions` which contained no pre-registered policies, returned `null`, and caused `AuthorizationPolicy.CombineAsync` to crash with `System.InvalidOperationException: The AuthorizationPolicy named: 'Courses.Read' was not found.`. The renderer exception occurred while `AuthorizeRouteView` was in the `<Authorizing>` state, freezing the page permanently with the linear progress indicator (`MudProgressLinear`) and preventing the page forms from ever mounting.
+   - *Fix:*
+     - In `ServiceCollectionExtensions.cs`, configured `services.AddAuthorizationCore(options => ...)` pre-registering all canonical policies from `AppPolicies.All` requiring authentication and permission claim (or `Admin` role).
+     - Used `services.Replace(ServiceDescriptor.Singleton<IAuthorizationPolicyProvider, HorizonAuthorizationPolicyProvider>())` so `HorizonAuthorizationPolicyProvider` actively replaces `DefaultAuthorizationPolicyProvider` in the DI container, dynamically generating any unlisted policies on demand.
+     - Added `services.AddLogging()` in `AddHorizonClient` so `IAuthorizationService` can activate `ILogger<DefaultAuthorizationService>` across all test and runtime environments.
+
+6. **Post-Login Redirection Bounce Back to Login (`/auth/login?returnUrl=%2Fcourses`):**
+   - *Problem:* When login completed successfully, `Login.razor` immediately called `NavigationManager.NavigateTo(destination, replace: true)`. At that moment, `CascadingAuthenticationState` had queued an update on the dispatcher via `InvokeAsync`, but the component render tree had not yet propagated the updated `Task<AuthenticationState>`. When `AuthorizeRouteView` evaluated the route `/courses`, it received the stale anonymous state, failed `DenyAnonymousAuthorizationRequirement`, and rendered `<NotAuthorized>`, which rendered `<RedirectToLogin />`, bouncing the user back to `/auth/login?returnUrl=%2Fcourses`. Furthermore, if `OnTokensChanged` or `OnAccessChanged` fired while an evaluation was already in flight, an `_isEvaluating` guard suppressed notifications entirely. In `EncryptedBrowserTokenStore`, every read required an asynchronous JS interop roundtrip.
+   - *Fix:*
+     - In `Login.razor`, added `[CascadingParameter] Task<AuthenticationState>? CascadingAuthState` and synchronized redirection in `OnParametersSetAsync()` and `SubmitAsync()`: after `RefreshAuthenticationStateAsync()`, `await Task.Yield()` allows `CascadingAuthenticationState` to propagate through the render tree before navigating.
+     - In `HorizonAuthenticationStateProvider.cs`, serialized state evaluations with `SemaphoreSlim _evalLock`, replaced deferred task passing with pre-completed `Task.FromResult(state)` in `NotifyCurrentStateAsync()` and added `RefreshAuthenticationStateAsync()`.
+     - In `RedirectToLogin.razor`, inspected the current authentication state; if the user is already authenticated, it does NOT bounce back to `/auth/login`.
+     - In `HF.Web/App.razor` and `HF.Mobile/Components/Routes.razor`, updated `<NotAuthorized Context="authState">` to display an explicit "Acesso negado" view if the user is authenticated, and `<RedirectToLogin />` only when truly anonymous.
+     - In `EncryptedBrowserTokenStore.cs`, added in-memory caching for `_cachedAccessToken` and `_cachedRefreshToken`, ensuring immediate token availability after save without JS interop delays.
 
 ---
 
