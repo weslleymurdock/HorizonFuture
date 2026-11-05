@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER root
-RUN apt update && apt install inetutils-ping -y
+RUN apt update && apt install -y --no-install-recommends inetutils-ping libgssapi-krb5-2 \
+    && rm -rf /var/lib/apt/lists/*
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080

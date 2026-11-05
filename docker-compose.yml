@@ -33,9 +33,10 @@ services:
       - Jwt__Key=${Jwt__Key:-HorizonFuture-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456}
       - Jwt__Issuer=${Jwt__Issuer:-HorizonFuture}
       - Jwt__Audience=${Jwt__Audience:-HorizonFuture}
+      - DATABASE_AUTO_MIGRATE=${DATABASE_AUTO_MIGRATE:-true}
     volumes:
       - hf_logs:/app/logs
-      - hf_data:/app/data
+      - hf_data:/home/app
     build:
       context: .
       dockerfile: src/HF.API/Dockerfile
