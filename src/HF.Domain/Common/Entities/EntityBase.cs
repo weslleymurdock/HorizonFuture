@@ -1,4 +1,4 @@
-﻿namespace HF.Domain.Common.Entities;
+namespace HF.Domain.Common.Entities;
 
 public interface IEntityBase
 {
@@ -9,10 +9,9 @@ public interface IEntityBase
     string? UpdatedBy { get; set; }
 }
 
-
-public class EntityBase(string Id) : IEntityBase
+public class EntityBase(string? id = null) : IEntityBase
 {
-    public string Id { get; set; } = Id ?? Guid.CreateVersion7().ToString();
+    public string Id { get; set; } = id ?? Guid.CreateVersion7().ToString();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public string CreatedBy { get; set; } = string.Empty;
