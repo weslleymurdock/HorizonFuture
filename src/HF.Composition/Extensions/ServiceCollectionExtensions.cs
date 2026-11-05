@@ -218,6 +218,10 @@ public static class ServiceCollectionExtensions
             var port = uri.Port > 0 ? uri.Port : 5432;
             var database = uri.AbsolutePath.TrimStart('/');
 
+            var isLocalOrDockerHost = uri.Host.Equals("db", StringComparison.OrdinalIgnoreCase) ||
+                                      uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                                      uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+
             var builder = new Npgsql.NpgsqlConnectionStringBuilder
             {
                 Host = uri.Host,
@@ -225,7 +229,7 @@ public static class ServiceCollectionExtensions
                 Database = database,
                 Username = username,
                 Password = password,
-                SslMode = Npgsql.SslMode.Require
+                SslMode = isLocalOrDockerHost ? Npgsql.SslMode.Prefer : Npgsql.SslMode.Require
             };
             return builder.ConnectionString;
         }

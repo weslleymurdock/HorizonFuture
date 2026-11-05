@@ -26,11 +26,14 @@ services:
     image: ${DOCKER_REGISTRY-}hf
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=https://+:8443;http://+:8080
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__PostgresConnection=${ConnectionStrings__DefaultConnection}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@horizonfuture.org}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin1234!}
     volumes:
       - hf_logs:/app/logs
-      - hf_data:/app/
+      - hf_data:/app/data
     build:
       context: .
       dockerfile: src/HF.API/Dockerfile
