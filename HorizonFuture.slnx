@@ -9,4 +9,7 @@
     <Project Path="src/HF.Mobile/HF.Mobile.csproj" />
     <Project Path="src/HF.Web/HF.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HF.Application.Tests/HF.Application.Tests.csproj" />
+  </Folder>
 </Solution>

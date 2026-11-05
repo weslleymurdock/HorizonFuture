@@ -1,8 +1,32 @@
 using FluentValidation;
+using HF.Application.AssetsLiabilities.Abstract;
+using HF.Application.AssetsLiabilities.Services;
+using HF.Application.Attendances.Abstract;
+using HF.Application.Attendances.Services;
 using HF.Application.Auth.Abstract;
 using HF.Application.Auth.Validators;
+using HF.Application.ClassSessions.Abstract;
+using HF.Application.ClassSessions.Services;
+using HF.Application.Collaborators.Abstract;
+using HF.Application.Collaborators.Services;
 using HF.Application.Common.Abstractions.Repositories;
 using HF.Application.Common.Middlewares;
+using HF.Application.Courses.Abstract;
+using HF.Application.Courses.Services;
+using HF.Application.Directors.Abstract;
+using HF.Application.Directors.Services;
+using HF.Application.Enrollments.Abstract;
+using HF.Application.Enrollments.Services;
+using HF.Application.Managers.Abstract;
+using HF.Application.Managers.Services;
+using HF.Application.Students.Abstract;
+using HF.Application.Students.Services;
+using HF.Application.TeacherAssignments.Abstract;
+using HF.Application.TeacherAssignments.Services;
+using HF.Application.Teachers.Abstract;
+using HF.Application.Teachers.Services;
+using HF.Application.Volunteers.Abstract;
+using HF.Application.Volunteers.Services;
 using HF.Infrastructure.Auth.Models;
 using HF.Infrastructure.Auth.Options;
 using HF.Infrastructure.Auth.Services;
@@ -91,6 +115,21 @@ public static class ServiceCollectionExtensions
                 ]; 
             });
             _ = services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+            _ = services.AddScoped<IStudentService, StudentService>();
+            _ = services.AddScoped<ITeacherService, TeacherService>();
+            _ = services.AddScoped<IManagerService, ManagerService>();
+            _ = services.AddScoped<IDirectorService, DirectorService>();
+            _ = services.AddScoped<ICollaboratorService, CollaboratorService>();
+            _ = services.AddScoped<IVolunteerService, VolunteerService>();
+            _ = services.AddScoped<ICourseService, CourseService>();
+            _ = services.AddScoped<ISubjectService, SubjectService>();
+            _ = services.AddScoped<IAssetService, AssetService>();
+            _ = services.AddScoped<ILiabilityService, LiabilityService>();
+            _ = services.AddScoped<ITeacherAssignmentService, TeacherAssignmentService>();
+            _ = services.AddScoped<IEnrollmentService, EnrollmentService>();
+            _ = services.AddScoped<IClassSessionService, ClassSessionService>();
+            _ = services.AddScoped<IAttendanceService, AttendanceService>();
 
             return services;
         }
@@ -236,4 +275,4 @@ public static class ServiceCollectionExtensions
 
         return trimmed;
     }
-}
+}
