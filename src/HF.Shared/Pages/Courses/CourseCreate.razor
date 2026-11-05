@@ -1,0 +1,209 @@
+@page "/courses/create"
+@inject CourseCreatePageModel PageModel
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Default"
+               Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/courses"))"
+               aria-label="Voltar para a lista de cursos">
+        Voltar para Cursos
+    </MudButton>
+
+    <MudCard Elevation="4" Class="pa-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" GutterBottom="true">Cadastrar Novo Curso</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Preencha os campos abaixo para registrar um curso na instituição.
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                    @PageModel.ErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                    <div class="d-flex flex-column gap-2">
+                        <span>@PageModel.SuccessMessage</span>
+                        @if (PageModel.CreatedCourse is not null)
+                        {
+                            <div class="d-flex gap-2 mt-2">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Inherit"
+                                           Size="Size.Small"
+                                           OnClick="@(() => Navigation.NavigateTo($"/courses/{PageModel.CreatedCourse.Id}"))">
+                                    Ver Detalhes do Curso
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Inherit"
+                                           Size="Size.Small"
+                                           OnClick="() => PageModel.ResetForm()">
+                                    Cadastrar Outro Curso
+                                </MudButton>
+                            </div>
+                        }
+                    </div>
+                </MudAlert>
+            }
+
+            @if (PageModel.IsForbidden)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+                    Acesso negado: seu usuário não possui a permissão necessária para criar cursos (Courses.Create).
+                </MudAlert>
+            }
+
+            <MudForm @onsubmit="() => PageModel.CreateCourseAsync()">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="8">
+                        <MudTextField T="string"
+                                      Label="Nome do Curso"
+                                      @bind-Value="PageModel.Name"
+                                      Required="true"
+                                      RequiredError="O nome do curso é obrigatório"
+                                      MaxLength="150"
+                                      Counter="150"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Nome de identificação do curso (até 150 caracteres)"
+                                      Disabled="@PageModel.IsBusy"
+                                      aria-label="Nome do curso" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string"
+                                      Label="Código do Curso"
+                                      @bind-Value="PageModel.Code"
+                                      Required="true"
+                                      RequiredError="O código do curso é obrigatório"
+                                      MaxLength="30"
+                                      Counter="30"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Código único (ex: MAT-101, PROG-01)"
+                                      Disabled="@PageModel.IsBusy"
+                                      aria-label="Código do curso" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="6">
+                        <MudNumericField T="int"
+                                         Label="Carga Horária (horas)"
+                                         @bind-Value="PageModel.WorkloadHours"
+                                         Min="1"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         HelperText="Duração total em horas (maior que zero)"
+                                         Disabled="@PageModel.IsBusy"
+                                         aria-label="Carga horária em horas" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="6">
+                        <MudSelect T="CourseStatus"
+                                   Label="Status Operacional"
+                                   @bind-Value="PageModel.Status"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Status operacional do curso">
+                            <MudSelectItem T="CourseStatus" Value="CourseStatus.Active">Ativo</MudSelectItem>
+                            <MudSelectItem T="CourseStatus" Value="CourseStatus.Draft">Rascunho</MudSelectItem>
+                            <MudSelectItem T="CourseStatus" Value="CourseStatus.Archived">Arquivado</MudSelectItem>
+                            <MudSelectItem T="CourseStatus" Value="CourseStatus.Suspended">Suspenso</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Público-Alvo"
+                                      @bind-Value="PageModel.TargetAudience"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Ex: Jovens de 14 a 18 anos, Adultos, Comunidade"
+                                      Disabled="@PageModel.IsBusy"
+                                      aria-label="Público-alvo do curso" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      Label="Unidade Escolar (SchoolUnitId)"
+                                      @bind-Value="PageModel.SchoolUnitId"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Identificador opcional da unidade escolar de oferta"
+                                      Disabled="@PageModel.IsBusy"
+                                      aria-label="Identificador da unidade escolar" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Descrição Detalhada"
+                                      @bind-Value="PageModel.Description"
+                                      Lines="3"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Ementa resumida, objetivos ou pré-requisitos pedagógicos"
+                                      Disabled="@PageModel.IsBusy"
+                                      aria-label="Descrição do curso" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-2 mt-6">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               OnClick="@(() => Navigation.NavigateTo("/courses"))"
+                               Disabled="@PageModel.IsBusy"
+                               aria-label="Cancelar cadastro">
+                        Cancelar
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               ButtonType="ButtonType.Submit"
+                               Disabled="@PageModel.IsBusy"
+                               aria-label="Salvar novo curso">
+                        @if (PageModel.IsBusy)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-1" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>Cadastrar Curso</span>
+                        }
+                    </MudButton>
+                </div>
+            </MudForm>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    protected override void OnInitialized()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+}
+
