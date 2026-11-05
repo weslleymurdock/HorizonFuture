@@ -87,7 +87,7 @@ public class WebAuthFlowUITests
         }
     }
 
-    [Fact]
+    [Fact(Skip = "Requer Google Chrome instalado e display gráfico ativo (DISPLAY=:0)")]
     public void LoginFlow_ValidatesInputs_AndSubmits_ObservableVisualBrowser()
     {
         _output.WriteLine($"[TEST SETUP] Web URL: {_webBaseUrl} | API URL: {_apiBaseUrl}");

@@ -268,5 +268,173 @@ public class SharedAuthPageModelsTests
         var removeGroup = await model.RemoveGroupAsync("AcademicStaff");
         Assert.True(removeGroup);
     }
+
+    [Fact]
+    public async Task ManageProfilePageModel_RefreshToken_PreFillsFromTokenStore_AndUsesIt()
+    {
+        var tokenStore = new HF.Shared.Auth.InMemoryTokenStore();
+        await tokenStore.SaveTokensAsync("current-access", "stored-refresh-xyz");
+
+        var model = new ManageProfilePageModel(_fakeAuthService, tokenStore);
+
+        await model.LoadInfoAsync();
+        Assert.Equal("stored-refresh-xyz", model.RefreshTokenInput);
+
+        // When refreshing without typing, it uses the stored refresh token
+        model.RefreshTokenInput = string.Empty;
+        var refreshResult = await model.RefreshTokensAsync();
+        Assert.True(refreshResult);
+        Assert.NotNull(model.SuccessMessage);
+    }
+
+    [Fact]
+    public async Task ManageProfilePageModel_RevokeToken_ClearsProfileState()
+    {
+        var tokenStore = new HF.Shared.Auth.InMemoryTokenStore();
+        await tokenStore.SaveTokensAsync("current-access", "stored-refresh-xyz");
+
+        var model = new ManageProfilePageModel(_fakeAuthService, tokenStore)
+        {
+            Email = "user@horizon.org",
+            DisplayName = "Test User",
+            RefreshTokenInput = "token-to-clear"
+        };
+
+        var revokeResult = await model.RevokeTokenAsync();
+        Assert.True(revokeResult);
+        Assert.Empty(model.Email);
+        Assert.Null(model.DisplayName);
+        Assert.Null(model.RefreshTokenInput);
+    }
+
+    [Fact]
+    public async Task ManageProfilePageModel_RefreshTokens_EmptyInputAndNoStore_Fails()
+    {
+        var model = new ManageProfilePageModel(_fakeAuthService);
+
+        var refreshResult = await model.RefreshTokensAsync();
+        Assert.False(refreshResult);
+        Assert.Contains("refresh token", model.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ManageRolesPageModel_ValidationAndErrors_SetErrorMessage()
+    {
+        var model = new ManageRolesPageModel(_fakeAuthService);
+
+        // Missing user ID
+        var loadResult = await model.LoadUserRolesAsync();
+        Assert.False(loadResult);
+        Assert.Contains("ID do usuário", model.ErrorMessage);
+
+        var assignMissingUser = await model.AssignRoleAsync();
+        Assert.False(assignMissingUser);
+
+        model.TargetUserId = "user-123";
+        var assignMissingRole = await model.AssignRoleAsync();
+        Assert.False(assignMissingRole);
+        Assert.Contains("Selecione a role", model.ErrorMessage);
+
+        // Simulated API Error / Unauthorized
+        _fakeAuthService.ShouldSucceed = false;
+        _fakeAuthService.FailureMessage = "Acesso negado: permissão Roles.Manage necessária (403)";
+        model.SelectedRoleToAssign = "Director";
+
+        var failedAssign = await model.AssignRoleAsync();
+        Assert.False(failedAssign);
+        Assert.Equal("Acesso negado: permissão Roles.Manage necessária (403)", model.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ManagePermissionsPageModel_ValidationAndErrors_SetErrorMessage()
+    {
+        var model = new ManagePermissionsPageModel(_fakeAuthService);
+
+        // Missing user ID
+        var loadResult = await model.LoadUserPermissionsAsync();
+        Assert.False(loadResult);
+        Assert.Contains("ID do usuário", model.ErrorMessage);
+
+        model.TargetUserId = "user-123";
+
+        // Missing grant selection
+        var grantMissing = await model.GrantPermissionAsync();
+        Assert.False(grantMissing);
+        Assert.Contains("Selecione a permissão", model.ErrorMessage);
+
+        // Missing revoke selection
+        var revokeMissing = await model.RevokePermissionAsync();
+        Assert.False(revokeMissing);
+        Assert.Contains("Selecione a permissão", model.ErrorMessage);
+
+        // Missing group selection
+        var groupMissing = await model.AssignGroupAsync();
+        Assert.False(groupMissing);
+        Assert.Contains("Selecione o grupo", model.ErrorMessage);
+
+        // Simulated API Error / Unauthorized
+        _fakeAuthService.ShouldSucceed = false;
+        _fakeAuthService.FailureMessage = "Acesso negado: permissão Permissions.Manage necessária (403)";
+        model.SelectedPermissionToGrant = "Students.Write";
+
+        var failedGrant = await model.GrantPermissionAsync();
+        Assert.False(failedGrant);
+        Assert.Equal("Acesso negado: permissão Permissions.Manage necessária (403)", model.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailPageModel_MissingInputs_FailsValidation()
+    {
+        var model = new ConfirmEmailPageModel(_fakeAuthService);
+
+        var resultNoUserId = await model.ConfirmEmailAsync();
+        Assert.False(resultNoUserId);
+        Assert.Contains("identificador", model.ErrorMessage);
+
+        model.UserId = "user-123";
+        var resultNoCode = await model.ConfirmEmailAsync();
+        Assert.False(resultNoCode);
+        Assert.Contains("código", model.ErrorMessage);
+
+        var resendNoEmail = await model.ResendConfirmationEmailAsync();
+        Assert.False(resendNoEmail);
+        Assert.Contains("email", model.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ResetPasswordPageModel_Validation_FailsOnEmptyOrMismatch()
+    {
+        var model = new ResetPasswordPageModel(_fakeAuthService);
+
+        var resultEmpty = await model.ResetPasswordAsync();
+        Assert.False(resultEmpty);
+        Assert.Contains("email", model.ErrorMessage);
+
+        model.Email = "user@horizon.org";
+        var resultNoCode = await model.ResetPasswordAsync();
+        Assert.False(resultNoCode);
+        Assert.Contains("código", model.ErrorMessage);
+
+        model.ResetCode = "123456";
+        var resultNoPassword = await model.ResetPasswordAsync();
+        Assert.False(resultNoPassword);
+        Assert.Contains("nova senha", model.ErrorMessage);
+
+        model.NewPassword = "Pass1";
+        model.ConfirmNewPassword = "Pass2";
+        var resultMismatch = await model.ResetPasswordAsync();
+        Assert.False(resultMismatch);
+        Assert.Equal("As senhas não coincidem.", model.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task ForgotPasswordPageModel_EmptyEmail_FailsValidation()
+    {
+        var model = new ForgotPasswordPageModel(_fakeAuthService);
+
+        var result = await model.SendForgotPasswordAsync();
+        Assert.False(result);
+        Assert.Contains("email", model.ErrorMessage);
+    }
 }
 

@@ -1,5 +1,6 @@
 @page "/auth/manage-roles"
 @inject ManageRolesPageModel PageModel
+@inject IDialogService DialogService
 
 <PageTitle>@PageModel.Title</PageTitle>
 
@@ -40,13 +41,23 @@
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense"
                                       Class="flex-grow-1"
+                                      aria-label="Identificador do Usuário para busca de roles"
                                       Disabled="@PageModel.IsBusy" />
 
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    OnClick="() => PageModel.LoadUserRolesAsync()"
-                                   Disabled="@PageModel.IsBusy">
-                            Consultar
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Consultar Roles do Usuário">
+                            @if (PageModel.IsBusy)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-n1 me-1" />
+                                <span>Buscando...</span>
+                            }
+                            else
+                            {
+                                <span>Consultar</span>
+                            }
                         </MudButton>
                     </div>
 
@@ -59,8 +70,9 @@
                                 <MudChip T="string"
                                          Color="Color.Primary"
                                          Variant="Variant.Outlined"
-                                         OnClose="() => PageModel.RemoveRoleAsync(role)"
-                                         CloseIcon="@Icons.Material.Filled.Close">
+                                         OnClose="() => ConfirmRemoveRoleAsync(role)"
+                                         CloseIcon="@Icons.Material.Filled.Close"
+                                         aria-label="@($"Remover papel {role}")">
                                     @role
                                 </MudChip>
                             }
@@ -83,6 +95,7 @@
                                    Variant="Variant.Outlined"
                                    Margin="Margin.Dense"
                                    Class="flex-grow-1"
+                                   aria-label="Selecionar Role para Atribuição"
                                    Disabled="@PageModel.IsBusy">
                             @foreach (var role in PageModel.CatalogRoles)
                             {
@@ -95,7 +108,8 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
                                    OnClick="() => PageModel.AssignRoleAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Atribuir Role Selecionada">
                             Atribuir
                         </MudButton>
                     </div>
@@ -115,7 +129,7 @@
                                        Color="Color.Primary"
                                        OnClick="() => PageModel.LoadCatalogRolesAsync()"
                                        Disabled="@PageModel.IsBusy"
-                                       aria-label="Atualizar catálogo" />
+                                       aria-label="Atualizar catálogo de roles" />
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
@@ -147,7 +161,21 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
         await PageModel.LoadCatalogRolesAsync();
     }
-}
 
+    private async Task ConfirmRemoveRoleAsync(string role)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Remover Role",
+            $"Deseja realmente remover o papel '{role}' do usuário '{PageModel.TargetUserId}'?",
+            yesText: "Remover",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.RemoveRoleAsync(role);
+        }
+    }
+}

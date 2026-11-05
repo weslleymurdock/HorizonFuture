@@ -1,5 +1,6 @@
 @page "/auth/manage-permissions"
 @inject ManagePermissionsPageModel PageModel
+@inject IDialogService DialogService
 
 <PageTitle>@PageModel.Title</PageTitle>
 
@@ -40,13 +41,23 @@
                                       Variant="Variant.Outlined"
                                       Margin="Margin.Dense"
                                       Class="flex-grow-1"
+                                      aria-label="Identificador do Usuário para busca de permissões"
                                       Disabled="@PageModel.IsBusy" />
 
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    OnClick="() => PageModel.LoadUserPermissionsAsync()"
-                                   Disabled="@PageModel.IsBusy">
-                            Consultar
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Consultar Permissões do Usuário">
+                            @if (PageModel.IsBusy)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-n1 me-1" />
+                                <span>Buscando...</span>
+                            }
+                            else
+                            {
+                                <span>Consultar</span>
+                            }
                         </MudButton>
                     </div>
 
@@ -60,8 +71,9 @@
                                 <MudChip T="string"
                                          Color="Color.Info"
                                          Variant="Variant.Outlined"
-                                         OnClose="() => PageModel.RemoveGroupAsync(grp)"
-                                         CloseIcon="@Icons.Material.Filled.Close">
+                                         OnClose="() => ConfirmRemoveGroupAsync(grp)"
+                                         CloseIcon="@Icons.Material.Filled.Close"
+                                         aria-label="@($"Remover do grupo {grp}")">
                                     @grp
                                 </MudChip>
                             }
@@ -100,8 +112,9 @@
                                 <MudChip T="string"
                                          Color="Color.Success"
                                          Variant="Variant.Outlined"
-                                         OnClose="() => PageModel.ClearPermissionAsync(grant)"
-                                         CloseIcon="@Icons.Material.Filled.Close">
+                                         OnClose="() => ConfirmClearPermissionAsync(grant)"
+                                         CloseIcon="@Icons.Material.Filled.Close"
+                                         aria-label="@($"Limpar override da concessão {grant}")">
                                     @grant (Limpar Override)
                                 </MudChip>
                             }
@@ -122,8 +135,9 @@
                                 <MudChip T="string"
                                          Color="Color.Error"
                                          Variant="Variant.Outlined"
-                                         OnClose="() => PageModel.ClearPermissionAsync(rev)"
-                                         CloseIcon="@Icons.Material.Filled.Close">
+                                         OnClose="() => ConfirmClearPermissionAsync(rev)"
+                                         CloseIcon="@Icons.Material.Filled.Close"
+                                         aria-label="@($"Limpar override da revogação {rev}")">
                                     @rev (Limpar Override)
                                 </MudChip>
                             }
@@ -147,6 +161,7 @@
                                    Variant="Variant.Outlined"
                                    Margin="Margin.Dense"
                                    Class="flex-grow-1"
+                                   aria-label="Permissão para Conceder Diretamente"
                                    Disabled="@PageModel.IsBusy">
                             @foreach (var p in PageModel.CatalogPermissions)
                             {
@@ -156,7 +171,8 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
                                    OnClick="() => PageModel.GrantPermissionAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Conceder Permissão">
                             Conceder
                         </MudButton>
                     </div>
@@ -169,6 +185,7 @@
                                    Variant="Variant.Outlined"
                                    Margin="Margin.Dense"
                                    Class="flex-grow-1"
+                                   aria-label="Permissão para Revogar Explicitamente"
                                    Disabled="@PageModel.IsBusy">
                             @foreach (var p in PageModel.CatalogPermissions)
                             {
@@ -177,8 +194,9 @@
                         </MudSelect>
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Error"
-                                   OnClick="() => PageModel.RevokePermissionAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   OnClick="ConfirmRevokePermissionAsync"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Revogar Permissão Explicitamente">
                             Revogar
                         </MudButton>
                     </div>
@@ -191,6 +209,7 @@
                                    Variant="Variant.Outlined"
                                    Margin="Margin.Dense"
                                    Class="flex-grow-1"
+                                   aria-label="Grupo de Permissões para Associação"
                                    Disabled="@PageModel.IsBusy">
                             @foreach (var grpKey in PageModel.CatalogGroups.Keys)
                             {
@@ -200,7 +219,8 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Info"
                                    OnClick="() => PageModel.AssignGroupAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Associar ao Grupo">
                             Associar Grupo
                         </MudButton>
                     </div>
@@ -220,7 +240,7 @@
                                        Color="Color.Primary"
                                        OnClick="() => PageModel.LoadCatalogPermissionsAsync()"
                                        Disabled="@PageModel.IsBusy"
-                                       aria-label="Atualizar catálogo" />
+                                       aria-label="Atualizar catálogo de permissões" />
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
@@ -273,7 +293,55 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
         await PageModel.LoadCatalogPermissionsAsync();
     }
-}
 
+    private async Task ConfirmRevokePermissionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PageModel.SelectedPermissionToRevoke))
+        {
+            PageModel.ErrorMessage = "Selecione a permissão a ser revogada.";
+            return;
+        }
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Revogar Permissão",
+            $"Deseja realmente revogar explicitamente a permissão '{PageModel.SelectedPermissionToRevoke}' para o usuário '{PageModel.TargetUserId}'? Esta regra sobrepõe papéis e grupos.",
+            yesText: "Revogar",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.RevokePermissionAsync();
+        }
+    }
+
+    private async Task ConfirmClearPermissionAsync(string perm)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Limpar Override de Permissão",
+            $"Deseja realmente remover o override (concessão ou revogação direta) da permissão '{perm}' para o usuário '{PageModel.TargetUserId}'?",
+            yesText: "Limpar Override",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.ClearPermissionAsync(perm);
+        }
+    }
+
+    private async Task ConfirmRemoveGroupAsync(string grp)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Remover de Grupo",
+            $"Deseja realmente remover o usuário '{PageModel.TargetUserId}' do grupo '{grp}'?",
+            yesText: "Remover do Grupo",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.RemoveGroupAsync(grp);
+        }
+    }
+}

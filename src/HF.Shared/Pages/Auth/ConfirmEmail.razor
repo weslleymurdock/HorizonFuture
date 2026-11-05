@@ -39,6 +39,7 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-3"
+                              aria-label="Identificador do Usuário (UserId)"
                               Disabled="@PageModel.IsBusy" />
 
                 <MudTextField T="string"
@@ -49,6 +50,7 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-3"
+                              aria-label="Código de Confirmação de Email"
                               Disabled="@PageModel.IsBusy" />
 
                 <MudTextField T="string"
@@ -58,14 +60,17 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-3"
+                              aria-label="Novo Endereço de Email"
                               Disabled="@PageModel.IsBusy" />
 
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            FullWidth="true"
                            Class="mb-4"
+                           ButtonType="ButtonType.Submit"
                            OnClick="() => PageModel.ConfirmEmailAsync()"
-                           Disabled="@PageModel.IsBusy">
+                           Disabled="@PageModel.IsBusy"
+                           aria-label="Confirmar ativação de email">
                     @if (PageModel.IsBusy)
                     {
                         <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
@@ -89,13 +94,16 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-3"
+                              aria-label="Email cadastrado para reenvio"
                               Disabled="@PageModel.IsBusy" />
 
                 <MudButton Variant="Variant.Outlined"
                            Color="Color.Secondary"
                            FullWidth="true"
+                           ButtonType="ButtonType.Submit"
                            OnClick="() => PageModel.ResendConfirmationEmailAsync()"
-                           Disabled="@PageModel.IsBusy">
+                           Disabled="@PageModel.IsBusy"
+                           aria-label="Reenviar link de confirmação">
                     Reenviar Confirmação
                 </MudButton>
             </MudForm>
@@ -121,6 +129,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
         if (!string.IsNullOrWhiteSpace(UserId) && !string.IsNullOrWhiteSpace(Code))
         {
             PageModel.UserId = UserId;
@@ -130,4 +139,3 @@
         }
     }
 }
-

@@ -39,6 +39,7 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-4"
+                              aria-label="Email de cadastro"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Email"
                               Disabled="@PageModel.IsBusy" />
@@ -52,6 +53,7 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-4"
+                              aria-label="Senha de cadastro"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Lock"
                               Disabled="@PageModel.IsBusy" />
@@ -65,6 +67,7 @@
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
                               Class="mb-4"
+                              aria-label="Confirmação da Senha"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.LockReset"
                               Disabled="@PageModel.IsBusy" />
@@ -74,8 +77,10 @@
                            FullWidth="true"
                            Size="Size.Large"
                            Class="mt-2"
+                           ButtonType="ButtonType.Submit"
                            OnClick="() => PageModel.RegisterAsync()"
-                           Disabled="@PageModel.IsBusy">
+                           Disabled="@PageModel.IsBusy"
+                           aria-label="Registrar nova conta">
                     @if (PageModel.IsBusy)
                     {
                         <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
@@ -101,3 +106,9 @@
     </MudCard>
 </MudContainer>
 
+@code {
+    protected override void OnInitialized()
+    {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
+    }
+}

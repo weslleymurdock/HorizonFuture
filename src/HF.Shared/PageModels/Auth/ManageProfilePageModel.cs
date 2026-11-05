@@ -7,6 +7,7 @@ namespace HF.Shared.PageModels.Auth;
 public partial class ManageProfilePageModel : PageModelBase
 {
     private readonly IAuthService _authService;
+    private readonly ITokenStore? _tokenStore;
 
     // Profile info
     [ObservableProperty]
@@ -64,9 +65,10 @@ public partial class ManageProfilePageModel : PageModelBase
     [ObservableProperty]
     public partial string? SuccessMessage { get; set; }
 
-    public ManageProfilePageModel(IAuthService authService)
+    public ManageProfilePageModel(IAuthService authService, ITokenStore? tokenStore = null)
     {
         _authService = authService;
+        _tokenStore = tokenStore;
         Title = "Meu Perfil e Segurança";
     }
 
@@ -76,6 +78,15 @@ public partial class ManageProfilePageModel : PageModelBase
         try
         {
             IsBusy = true;
+            if (_tokenStore is not null && string.IsNullOrWhiteSpace(RefreshTokenInput))
+            {
+                var storedRefreshToken = await _tokenStore.GetRefreshTokenAsync();
+                if (!string.IsNullOrWhiteSpace(storedRefreshToken))
+                {
+                    RefreshTokenInput = storedRefreshToken;
+                }
+            }
+
             var result = await _authService.GetIdentityInfoAsync(ct);
             if (result.Succeeded && result.Data is not null)
             {
@@ -201,16 +212,20 @@ public partial class ManageProfilePageModel : PageModelBase
         ErrorMessage = null;
         SuccessMessage = null;
 
-        if (string.IsNullOrWhiteSpace(RefreshTokenInput))
+        var tokenToRefresh = !string.IsNullOrWhiteSpace(RefreshTokenInput)
+            ? RefreshTokenInput
+            : (_tokenStore is not null ? await _tokenStore.GetRefreshTokenAsync() : null);
+
+        if (string.IsNullOrWhiteSpace(tokenToRefresh))
         {
-            ErrorMessage = "Informe o refresh token para renovação.";
+            ErrorMessage = "Informe o refresh token para renovação ou efetue login.";
             return false;
         }
 
         try
         {
             IsBusy = true;
-            var request = new RefreshDto(RefreshTokenInput);
+            var request = new RefreshDto(tokenToRefresh);
             var result = await _authService.RefreshTokenAsync(request, ct);
 
             if (result.Succeeded && result.Data is not null)
@@ -247,6 +262,16 @@ public partial class ManageProfilePageModel : PageModelBase
             if (result.Succeeded)
             {
                 SuccessMessage = "Sessão revogada com sucesso.";
+                RefreshTokenInput = null;
+                Email = string.Empty;
+                IsEmailConfirmed = false;
+                DisplayName = null;
+                FirstName = null;
+                SurName = null;
+                IsTwoFactorEnabled = false;
+                SharedKey = null;
+                RecoveryCodesLeft = 0;
+                RecoveryCodes = null;
                 return true;
             }
 

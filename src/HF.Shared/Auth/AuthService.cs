@@ -9,6 +9,7 @@ using HF.Client;
 using HF.Client.Models;
 using HF.Shared.Auth.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Serialization;
 
 namespace HF.Shared.Auth;
 
@@ -47,11 +48,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityResultDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityResultDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityResultDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -88,11 +89,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<TokenResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<TokenResponseDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<TokenResponseDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<TokenResponseDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -126,11 +127,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<TokenResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<TokenResponseDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<TokenResponseDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<TokenResponseDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -148,11 +149,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -175,11 +176,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -204,11 +205,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityResultDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityResultDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityResultDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -227,11 +228,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityResultDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityResultDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityResultDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -256,11 +257,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityResultDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityResultDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityResultDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -289,11 +290,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityInfoDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityInfoDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityInfoDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityInfoDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -318,11 +319,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IdentityResultDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IdentityResultDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IdentityResultDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -361,11 +362,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<TwoFactorResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<TwoFactorResponseDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<TwoFactorResponseDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<TwoFactorResponseDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -381,11 +382,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<IReadOnlyList<RoleCatalogItemDto>>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -407,11 +408,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<UserRolesDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<UserRolesDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<UserRolesDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<UserRolesDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -430,11 +431,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -452,11 +453,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -474,9 +475,31 @@ public class AuthService : IAuthService
                 {
                     foreach (var kvp in response.Value.Groups.AdditionalData)
                     {
-                        if (kvp.Value is IEnumerable list)
+                        var items = new List<string>();
+
+                        if (kvp.Value is UntypedArray untypedArray)
                         {
-                            var items = new List<string>();
+                            foreach (var node in untypedArray.GetValue())
+                            {
+                                if (node is UntypedString strNode && strNode.GetValue() is not null)
+                                {
+                                    items.Add(strNode.GetValue()!);
+                                }
+                                else if (node is not null)
+                                {
+                                    items.Add(node.ToString()!);
+                                }
+                            }
+                        }
+                        else if (kvp.Value is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                        {
+                            foreach (var item in jsonElement.EnumerateArray())
+                            {
+                                items.Add(item.GetString() ?? item.ToString());
+                            }
+                        }
+                        else if (kvp.Value is IEnumerable list && kvp.Value is not string)
+                        {
                             foreach (var item in list)
                             {
                                 if (item is not null)
@@ -484,8 +507,9 @@ public class AuthService : IAuthService
                                     items.Add(item.ToString()!);
                                 }
                             }
-                            groups[kvp.Key] = items;
                         }
+
+                        groups[kvp.Key] = items;
                     }
                 }
 
@@ -496,11 +520,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<PermissionCatalogDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<PermissionCatalogDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<PermissionCatalogDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<PermissionCatalogDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -525,11 +549,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<UserPermissionsDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<UserPermissionsDto>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<UserPermissionsDto>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<UserPermissionsDto>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -548,11 +572,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -571,11 +595,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -593,11 +617,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -616,11 +640,11 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
     }
 
@@ -638,11 +662,52 @@ public class AuthService : IAuthService
         }
         catch (ApiException ex)
         {
-            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
+            return HandleApiException<bool>(ex);
         }
         catch (Exception ex)
         {
-            return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
+            return AuthResult<bool>.Fail(MapExceptionMessage(ex));
         }
+    }
+
+    private static AuthResult<T> HandleApiException<T>(ApiException ex)
+    {
+        var message = MapApiExceptionMessage(ex);
+        return AuthResult<T>.Fail(message, statusCode: ex.ResponseStatusCode);
+    }
+
+    private static AuthResult HandleApiException(ApiException ex)
+    {
+        var message = MapApiExceptionMessage(ex);
+        return AuthResult.Fail(message, statusCode: ex.ResponseStatusCode);
+    }
+
+    private static string MapApiExceptionMessage(ApiException ex)
+    {
+        return ex.ResponseStatusCode switch
+        {
+            400 => !string.IsNullOrWhiteSpace(ex.Message) && !ex.Message.Contains("Exception") && !ex.Message.StartsWith("The HTTP")
+                ? ex.Message
+                : "Requisição inválida. Verifique os dados informados.",
+            401 => "Sessão expirada ou não autenticada (401). Faça login novamente para continuar.",
+            403 => "Acesso negado: seu usuário não possui a permissão necessária para executar esta ação (403).",
+            404 => "O registro ou recurso solicitado não foi encontrado (404).",
+            409 => "Conflito: a operação não pôde ser concluída devido ao estado atual do registro (409).",
+            429 => "Muitas requisições. Aguarde alguns instantes antes de tentar novamente (429).",
+            >= 500 => "Ocorreu um erro interno no servidor (500). Tente novamente mais tarde.",
+            _ => !string.IsNullOrWhiteSpace(ex.Message) && !ex.Message.Contains("Exception") && !ex.Message.StartsWith("The HTTP")
+                ? ex.Message
+                : "Falha na comunicação com o servidor de autenticação."
+        };
+    }
+
+    private static string MapExceptionMessage(Exception ex)
+    {
+        return ex switch
+        {
+            HttpRequestException => "Não foi possível conectar ao servidor. Verifique sua conexão de rede.",
+            TaskCanceledException => "A operação foi cancelada ou o tempo limite da requisição expirou.",
+            _ => $"Erro na requisição: {ex.Message}"
+        };
     }
 }

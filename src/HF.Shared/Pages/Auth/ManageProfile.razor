@@ -1,5 +1,6 @@
 @page "/auth/manage"
 @inject ManageProfilePageModel PageModel
+@inject IDialogService DialogService
 
 <PageTitle>@PageModel.Title</PageTitle>
 
@@ -36,7 +37,7 @@
                                        Color="Color.Primary"
                                        OnClick="() => PageModel.LoadInfoAsync()"
                                        Disabled="@PageModel.IsBusy"
-                                       aria-label="Atualizar dados" />
+                                       aria-label="Atualizar dados do perfil" />
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
@@ -64,41 +65,56 @@
                     <MudDivider Class="my-4" />
 
                     <MudText Typo="Typo.subtitle1" Class="mb-3 font-weight-bold">Atualizar Email ou Senha</MudText>
-                    <MudTextField T="string"
-                                  Label="Novo Email (Opcional)"
-                                  @bind-Value="PageModel.NewEmail"
-                                  InputType="InputType.Email"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Class="mb-3"
-                                  Disabled="@PageModel.IsBusy" />
+                    <MudForm @onsubmit="() => PageModel.UpdateInfoAsync()">
+                        <MudTextField T="string"
+                                      Label="Novo Email (Opcional)"
+                                      @bind-Value="PageModel.NewEmail"
+                                      InputType="InputType.Email"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3"
+                                      aria-label="Novo Email"
+                                      Disabled="@PageModel.IsBusy" />
 
-                    <MudTextField T="string"
-                                  Label="Nova Senha (Opcional)"
-                                  @bind-Value="PageModel.NewPassword"
-                                  InputType="InputType.Password"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Class="mb-3"
-                                  Disabled="@PageModel.IsBusy" />
+                        <MudTextField T="string"
+                                      Label="Nova Senha (Opcional)"
+                                      @bind-Value="PageModel.NewPassword"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3"
+                                      aria-label="Nova Senha"
+                                      Disabled="@PageModel.IsBusy" />
 
-                    <MudTextField T="string"
-                                  Label="Senha Atual (Obrigatória para salvar)"
-                                  @bind-Value="PageModel.OldPassword"
-                                  InputType="InputType.Password"
-                                  Required="true"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Class="mb-4"
-                                  Disabled="@PageModel.IsBusy" />
+                        <MudTextField T="string"
+                                      Label="Senha Atual (Obrigatória para salvar)"
+                                      @bind-Value="PageModel.OldPassword"
+                                      InputType="InputType.Password"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-4"
+                                      aria-label="Senha Atual"
+                                      Disabled="@PageModel.IsBusy" />
 
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               OnClick="() => PageModel.UpdateInfoAsync()"
-                               Disabled="@PageModel.IsBusy">
-                        Salvar Alterações
-                    </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   ButtonType="ButtonType.Submit"
+                                   OnClick="() => PageModel.UpdateInfoAsync()"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Salvar Alterações de Perfil">
+                            @if (PageModel.IsBusy)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="ms-n1 me-2" />
+                                <span>Salvando...</span>
+                            }
+                            else
+                            {
+                                <span>Salvar Alterações</span>
+                            }
+                        </MudButton>
+                    </MudForm>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -154,6 +170,7 @@
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   Class="mb-3"
+                                  aria-label="Código 2FA do Authenticator"
                                   Disabled="@PageModel.IsBusy" />
 
                     <div class="d-flex flex-wrap gap-2">
@@ -163,7 +180,8 @@
                                        Color="Color.Success"
                                        Size="Size.Small"
                                        OnClick="() => PageModel.ConfigureTwoFactorAsync(enable: true)"
-                                       Disabled="@PageModel.IsBusy">
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Ativar 2FA">
                                 Ativar 2FA
                             </MudButton>
                         }
@@ -172,8 +190,9 @@
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Error"
                                        Size="Size.Small"
-                                       OnClick="() => PageModel.ConfigureTwoFactorAsync(enable: false)"
-                                       Disabled="@PageModel.IsBusy">
+                                       OnClick="ConfirmDisableTwoFactorAsync"
+                                       Disabled="@PageModel.IsBusy"
+                                       aria-label="Desativar 2FA">
                                 Desativar 2FA
                             </MudButton>
                         }
@@ -181,24 +200,27 @@
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    Size="Size.Small"
-                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(resetSharedKey: true)"
-                                   Disabled="@PageModel.IsBusy">
+                                   OnClick="ConfirmResetSharedKeyAsync"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Gerar Nova Chave 2FA">
                             Gerar Nova Chave
                         </MudButton>
 
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Warning"
                                    Size="Size.Small"
-                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(resetRecoveryCodes: true)"
-                                   Disabled="@PageModel.IsBusy">
+                                   OnClick="ConfirmResetRecoveryCodesAsync"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Novos Códigos de Backup">
                             Novos Códigos de Backup
                         </MudButton>
 
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Secondary"
                                    Size="Size.Small"
-                                   OnClick="() => PageModel.ConfigureTwoFactorAsync(forgetMachine: true)"
-                                   Disabled="@PageModel.IsBusy">
+                                   OnClick="ConfirmForgetMachineAsync"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Esquecer Dispositivo Confiável">
                             Esquecer Máquina
                         </MudButton>
                     </div>
@@ -218,20 +240,24 @@
                                   Variant="Variant.Outlined"
                                   Margin="Margin.Dense"
                                   Class="mb-3"
+                                  aria-label="Refresh Token"
+                                  HelperText="Carregado automaticamente da sessão ativa ou inserido manualmente"
                                   Disabled="@PageModel.IsBusy" />
 
                     <div class="d-flex gap-2">
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    OnClick="() => PageModel.RefreshTokensAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Renovar Tokens de Autenticação">
                             Renovar Tokens
                         </MudButton>
 
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Error"
-                                   OnClick="() => PageModel.RevokeTokenAsync()"
-                                   Disabled="@PageModel.IsBusy">
+                                   OnClick="ConfirmRevokeTokenAsync"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Revogar Sessão e Efetuar Logout">
                             Revogar Sessão (Logout)
                         </MudButton>
                     </div>
@@ -244,6 +270,77 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
         await PageModel.LoadInfoAsync();
+    }
+
+    private async Task ConfirmRevokeTokenAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Revogação",
+            "Deseja realmente revogar a sessão atual? O acesso autenticado nesta máquina será encerrado.",
+            yesText: "Revogar Sessão",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.RevokeTokenAsync();
+        }
+    }
+
+    private async Task ConfirmDisableTwoFactorAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Desativar 2FA",
+            "Deseja realmente desativar a autenticação em dois fatores da sua conta?",
+            yesText: "Desativar",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.ConfigureTwoFactorAsync(enable: false);
+        }
+    }
+
+    private async Task ConfirmResetSharedKeyAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Gerar Nova Chave 2FA",
+            "Atenção: Gerar uma nova chave invalidará o aplicativo autenticador atualmente configurado até que seja recadastrado. Deseja prosseguir?",
+            yesText: "Gerar Nova Chave",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.ConfigureTwoFactorAsync(resetSharedKey: true);
+        }
+    }
+
+    private async Task ConfirmResetRecoveryCodesAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Gerar Novos Códigos de Backup",
+            "Atenção: Os códigos de recuperação anteriores serão invalidados e substituídos. Deseja prosseguir?",
+            yesText: "Gerar Novos Códigos",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.ConfigureTwoFactorAsync(resetRecoveryCodes: true);
+        }
+    }
+
+    private async Task ConfirmForgetMachineAsync()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Esquecer Dispositivo",
+            "Deseja que este dispositivo seja esquecido, exigindo o código 2FA no próximo login?",
+            yesText: "Confirmar",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.ConfigureTwoFactorAsync(forgetMachine: true);
+        }
     }
 }
