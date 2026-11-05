@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neon -d neondb"]
+      interval: 5m
+      timeout: 5s
+      retries: 3
+      start_period: 30s # Bootstrap duration, for this duration failures does not count towards max retries.
+      start_interval: 5s # How long after the health check has started to run the healthcheck again.
+    networks:
+      - hfnet
+
+
+  hf:
+    image: ${DOCKER_REGISTRY-}hf
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=https://+:8443;http://+:8080
+      - ConnectionStrings__PostgresConnection=${ConnectionStrings__DefaultConnection}
+    volumes:
+      - hf_logs:/app/logs
+      - hf_data:/app/
+    build:
+      context: .
+      dockerfile: src/HF.API/Dockerfile
+      args:
+        - BUILD_CONFIGURATION=Debug 
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    networks:
+      - hfnet
+    
+volumes:
+  hf_logs:
+    driver: local
+  db_data:
+    driver: local
+  hf_data:
+    driver: local
+networks:
+  hfnet:
+    driver: bridge

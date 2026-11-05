@@ -1,6 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
+    <PackageReference Include="Mediator.Abstractions" Version="3.0.2">
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.18.7" />
     <ProjectReference Include="..\HF.Application\HF.Application.csproj" />
     <ProjectReference Include="..\HF.Infrastructure\HF.Infrastructure.csproj" />
   </ItemGroup>
