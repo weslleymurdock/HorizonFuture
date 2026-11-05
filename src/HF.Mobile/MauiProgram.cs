@@ -1,4 +1,6 @@
-﻿using HF.Shared;
+using HF.Mobile.Auth;
+using HF.Shared;
+using HF.Shared.Auth;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 
@@ -23,6 +25,9 @@ public static class MauiProgram
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
 #endif
+
+		// Host-specific native secure storage for MAUI
+		builder.Services.AddScoped<ITokenStore, MauiSecureTokenStore>();
 
 		builder.Services.AddPageModels();
 

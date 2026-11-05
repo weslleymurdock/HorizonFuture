@@ -1,0 +1,208 @@
+@page "/teachers/create"
+@attribute [Authorize]
+@inject TeacherCreatePageModel PageModel
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => Navigation.NavigateTo("/teachers"))"
+               Class="mb-4">
+        Voltar para a Lista
+    </MudButton>
+
+    <MudCard Elevation="4" Class="pa-6">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" GutterBottom="true">Cadastrar Novo Professor</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Preencha os dados abaixo para registrar um novo membro do corpo docente.
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        <MudCardContent>
+            @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                    @PageModel.ErrorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                    @PageModel.SuccessMessage
+                </MudAlert>
+            }
+
+            @if (PageModel.IsForbidden)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+                    Acesso negado: seu perfil não possui a permissão necessária para cadastrar professores (Teachers.Create).
+                </MudAlert>
+            }
+
+            @if (PageModel.IsUnauthorized)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+                    Sua sessão expirou ou você não está autenticado. Faça login para continuar.
+                </MudAlert>
+            }
+
+            <MudForm @onsubmit="SubmitAsync">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Identificador de Usuário (UserId) *"
+                                      @bind-Value="PageModel.UserId"
+                                      Immediate="true"
+                                      Required="true"
+                                      RequiredError="O identificador de usuário é obrigatório"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="ID do usuário de autenticação vinculado ao professor"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Número de Matrícula *"
+                                      @bind-Value="PageModel.EmployeeNumber"
+                                      Immediate="true"
+                                      Required="true"
+                                      RequiredError="A matrícula é obrigatória"
+                                      MaxLength="50"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Máximo de 50 caracteres (único)"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Especialidade Pedagógica *"
+                                      @bind-Value="PageModel.Specialty"
+                                      Immediate="true"
+                                      Required="true"
+                                      RequiredError="A especialidade é obrigatória"
+                                      MaxLength="100"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Ex: Matemática, Alfabetização, Artes"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Formação Acadêmica"
+                                      @bind-Value="PageModel.AcademicDegree"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Ex: Licenciatura em Pedagogia, Pós-Graduação"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      Label="Unidade Escolar (SchoolUnitId)"
+                                      @bind-Value="PageModel.SchoolUnitId"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Lotação inicial do docente"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="TeacherStatus"
+                                   Label="Status Operacional *"
+                                   @bind-Value="PageModel.Status"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Disabled="@PageModel.IsBusy">
+                            <MudSelectItem T="TeacherStatus" Value="TeacherStatus.Active">Ativo</MudSelectItem>
+                            <MudSelectItem T="TeacherStatus" Value="TeacherStatus.OnLeave">Em Licença</MudSelectItem>
+                            <MudSelectItem T="TeacherStatus" Value="TeacherStatus.Inactive">Inativo</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudDatePicker Label="Data de Contratação"
+                                       @bind-Date="PageModel.HireDate"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Clearable="true"
+                                       Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      Label="Biografia / Observações"
+                                      @bind-Value="PageModel.Bio"
+                                      Lines="3"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      HelperText="Resumo da trajetória e atuação educacional"
+                                      Disabled="@PageModel.IsBusy" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-2 mt-6">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               OnClick="@(() => Navigation.NavigateTo("/teachers"))"
+                               Disabled="@PageModel.IsBusy">
+                        Cancelar
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               ButtonType="ButtonType.Submit"
+                               OnClick="SubmitAsync"
+                               Disabled="@PageModel.IsBusy">
+                        @if (PageModel.IsBusy)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>Salvar Professor</span>
+                        }
+                    </MudButton>
+                </div>
+            </MudForm>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    protected override void OnInitialized()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task SubmitAsync()
+    {
+        var success = await PageModel.CreateTeacherAsync();
+        if (success && PageModel.CreatedTeacher is not null)
+        {
+            await Task.Delay(400);
+            Navigation.NavigateTo($"/teachers/{PageModel.CreatedTeacher.Id}");
+        }
+    }
+}
+

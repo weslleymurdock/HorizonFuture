@@ -1,0 +1,237 @@
+@page "/teachers/{Id}"
+@attribute [Authorize]
+@inject TeacherDetailsPageModel PageModel
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => Navigation.NavigateTo("/teachers"))"
+               Class="mb-4">
+        Voltar para a Lista
+    </MudButton>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    @if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+            Acesso negado: seu perfil não possui a permissão necessária para visualizar os detalhes deste professor (Teachers.Read).
+        </MudAlert>
+    }
+
+    @if (PageModel.IsUnauthorized)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+            Sua sessão expirou ou você não está autenticado. Faça login para continuar.
+        </MudAlert>
+    }
+
+    @if (PageModel.IsNotFound)
+    {
+        <MudCard Elevation="3" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.PersonOff" Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Professor Não Encontrado</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                O professor com o identificador informado não foi localizado no sistema ou pode ter sido removido.
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="@(() => Navigation.NavigateTo("/teachers"))">
+                Ver Todos os Professores
+            </MudButton>
+        </MudCard>
+    }
+    else if (PageModel.IsBusy)
+    {
+        <div class="pa-12 text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Carregando dados do professor...</MudText>
+        </div>
+    }
+    else if (PageModel.Teacher is not null)
+    {
+        <MudCard Elevation="4" Class="pa-6">
+            <div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-4">
+                <div>
+                    <div class="d-flex align-center gap-2 mb-1">
+                        <MudText Typo="Typo.h4">@PageModel.Teacher.Specialty</MudText>
+                        <MudChip T="string" Color="@GetStatusColor(PageModel.Teacher.Status)" Variant="Variant.Filled" Size="Size.Small">
+                            @GetStatusLabel(PageModel.Teacher.Status)
+                        </MudChip>
+                    </div>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+                        Matrícula: <b>@PageModel.Teacher.EmployeeNumber</b>
+                    </MudText>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="@(() => Navigation.NavigateTo($"/teachers/{PageModel.Teacher.Id}/edit"))">
+                        Editar
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Delete"
+                               Disabled="@PageModel.IsDeleting"
+                               OnClick="ConfirmDeleteAsync">
+                        @if (PageModel.IsDeleting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                            <span>Excluindo...</span>
+                        }
+                        else
+                        {
+                            <span>Excluir</span>
+                        }
+                    </MudButton>
+                </div>
+            </div>
+
+            <MudDivider Class="my-4" />
+
+            <MudGrid Spacing="3">
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Usuário Vinculado (UserId)</MudText>
+                    <MudText Typo="Typo.body1">@PageModel.Teacher.UserId</MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Formação Acadêmica</MudText>
+                    <MudText Typo="Typo.body1">
+                        @(string.IsNullOrWhiteSpace(PageModel.Teacher.AcademicDegree) ? "Não informada" : PageModel.Teacher.AcademicDegree)
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Unidade Escolar (SchoolUnitId)</MudText>
+                    <MudText Typo="Typo.body1">
+                        @(string.IsNullOrWhiteSpace(PageModel.Teacher.SchoolUnitId) ? "Não associado a unidade específica" : PageModel.Teacher.SchoolUnitId)
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Contratação</MudText>
+                    <MudText Typo="Typo.body1">
+                        @(PageModel.Teacher.HireDate.HasValue ? PageModel.Teacher.HireDate.Value.ToString("dd/MM/yyyy") : "Não informada")
+                    </MudText>
+                </MudItem>
+
+                @if (!string.IsNullOrWhiteSpace(PageModel.Teacher.Bio))
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Biografia / Resumo Profissional</MudText>
+                        <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@PageModel.Teacher.Bio</MudText>
+                    </MudItem>
+                }
+            </MudGrid>
+
+            <MudDivider Class="my-4" />
+
+            <!-- Metadados de Auditoria -->
+            <MudExpansionPanels Elevation="0">
+                <MudExpansionPanel Text="Informações de Auditoria e Rastreabilidade" Dense="true">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Cadastrado em</MudText>
+                            <MudText Typo="Typo.body2">@(PageModel.Teacher.CreatedAt?.ToString("dd/MM/yyyy HH:mm:ss") ?? "N/A")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Cadastrado por</MudText>
+                            <MudText Typo="Typo.body2">@(PageModel.Teacher.CreatedBy ?? "N/A")</MudText>
+                        </MudItem>
+                        @if (PageModel.Teacher.UpdatedAt.HasValue)
+                        {
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Última atualização</MudText>
+                                <MudText Typo="Typo.body2">@PageModel.Teacher.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm:ss")</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Atualizado por</MudText>
+                                <MudText Typo="Typo.body2">@(PageModel.Teacher.UpdatedBy ?? "N/A")</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        await PageModel.LoadTeacherAsync(Id);
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (PageModel.Teacher is null) return;
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão",
+            $"Deseja realmente excluir o professor '{PageModel.Teacher.EmployeeNumber}' ({PageModel.Teacher.Specialty})? Esta ação não poderá ser desfeita.",
+            yesText: "Excluir Professor",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var success = await PageModel.DeleteTeacherAsync();
+            if (success)
+            {
+                await Task.Delay(400);
+                Navigation.NavigateTo("/teachers");
+            }
+        }
+    }
+
+    private static Color GetStatusColor(TeacherStatus status) => status switch
+    {
+        TeacherStatus.Active => Color.Success,
+        TeacherStatus.OnLeave => Color.Warning,
+        TeacherStatus.Inactive => Color.Default,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(TeacherStatus status) => status switch
+    {
+        TeacherStatus.Active => "Ativo",
+        TeacherStatus.OnLeave => "Em Licença",
+        TeacherStatus.Inactive => "Inativo",
+        _ => status.ToString()
+    };
+}
+

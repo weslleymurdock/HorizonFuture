@@ -1,6 +1,6 @@
 # HF.UITests - UI and Integration Test Suite (Web, Mobile, and Shared)
 
-This project contains the comprehensive user interface (UI) and workflow integration test suite for the **Horizon – Olhar do Futuro** platform, covering the **Authentication (Auth)**, **Courses**, **Subjects**, and **Students** features.
+This project contains the comprehensive user interface (UI) and workflow integration test suite for the **Horizon – Olhar do Futuro** platform, covering the **Authentication (Auth)**, **Courses**, **Subjects**, **Students**, and **Teachers** features.
 
 It exercises both client host targets:
 
@@ -25,7 +25,9 @@ tests/HF.UITests/
 │   │   ├── FakeAuthService.cs                # Deterministic fake for IAuthService
 │   │   ├── FakeCourseService.cs              # Deterministic fake for ICourseService
 │   │   ├── FakeSubjectService.cs             # Deterministic fake for ISubjectService
-│   │   └── FakeStudentService.cs             # Deterministic fake for IStudentService
+│   │   ├── FakeStudentService.cs             # Deterministic fake for IStudentService
+│   │   └── FakeTeacherService.cs             # Deterministic fake for ITeacherService
+│   ├── SharedAuthenticationAndSessionTests.cs# Route protection, token persistence, reactive/proactive refresh
 │   ├── SharedAuthKiotaIntegrationTests.cs    # Auth Kiota REST client integration tests
 │   ├── SharedAuthPageModelsTests.cs          # Unit tests for the 8 Auth PageModels
 │   ├── SharedAuthRouteAndComponentDiscoveryTests.cs # Route and DI resolution for Auth pages
@@ -38,6 +40,9 @@ tests/HF.UITests/
 │   ├── SharedStudentsKiotaIntegrationTests.cs# Students Kiota REST client integration tests (all 5 endpoints)
 │   ├── SharedStudentsPageModelsTests.cs      # Unit tests for the 4 Students PageModels
 │   ├── SharedStudentsRouteAndComponentDiscoveryTests.cs# Route and DI resolution for Students pages
+│   ├── SharedTeachersKiotaIntegrationTests.cs# Teachers Kiota REST client integration tests (all 5 endpoints)
+│   ├── SharedTeachersPageModelsTests.cs      # Unit tests for the 4 Teachers PageModels
+│   ├── SharedTeachersRouteAndComponentDiscoveryTests.cs# Route and DI resolution for Teachers pages
 │   └── WebClientBaseUrlConfigurationTests.cs # Verification of REST client base URL resolution
 ├── Web/                                      # Web UI automation for HF.Web (Selenium WebDriver)
 │   ├── WebAuthFlowUITests.cs                 # Real browser authentication and network audit
@@ -205,11 +210,12 @@ dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Mobi
 
 | Test Category | Test Class / Project | Total Tests | Status |
 | :--- | :--- | :---: | :---: |
-| **Shared Auth** | `SharedAuthPageModelsTests`, `SharedAuthRouteAndComponentDiscoveryTests`, `SharedAuthKiotaIntegrationTests` | 55 | Passed |
+| **Shared Auth & Session** | `SharedAuthPageModelsTests`, `SharedAuthRouteAndComponentDiscoveryTests`, `SharedAuthKiotaIntegrationTests`, `SharedAuthenticationAndSessionTests` | 67 | Passed |
 | **Shared Courses** | `SharedCoursesPageModelsTests`, `SharedCoursesRouteAndComponentDiscoveryTests`, `SharedCoursesKiotaIntegrationTests` | 54 | Passed |
 | **Shared Subjects** | `SharedSubjectsPageModelsTests`, `SharedSubjectsRouteAndComponentDiscoveryTests`, `SharedSubjectsKiotaIntegrationTests` | 57 | Passed |
 | **Shared Students** | `SharedStudentsPageModelsTests`, `SharedStudentsRouteAndComponentDiscoveryTests`, `SharedStudentsKiotaIntegrationTests` | 51 | Passed |
+| **Shared Teachers** | `SharedTeachersPageModelsTests`, `SharedTeachersRouteAndComponentDiscoveryTests`, `SharedTeachersKiotaIntegrationTests` | 41 | Passed |
 | **Domain & Unit** | `HF.UnitTests` (Entities, Architecture, Middlewares, Handlers, Services) | 76 | Passed |
 | **Web Selenium** | `WebAuthFlowUITests`, `WebCoursesFlowUITests`, `WebSubjectsFlowUITests`, `WebStudentsFlowUITests` | 20 | Environment Blocked (Browser binary missing: `/usr/bin/google-chrome`) |
 | **Mobile Appium** | `MobileAuthFlowUITests`, `MobileCoursesFlowUITests`, `MobileSubjectsFlowUITests`, `MobileStudentsFlowUITests` | 12 | Environment Blocked (Appium server / Android emulator missing) |
-| **Total Automated & Passing in Environment** | **Unit & Shared Suites** | **293** | **0 Failed, 0 Skipped** |
+| **Total Automated & Passing in Environment** | **Unit & Shared Suites** | **346** | **0 Failed, 0 Skipped** |

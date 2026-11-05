@@ -1,23 +1,40 @@
 <MudNavMenu>
-    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
 
-    <MudNavGroup Title="Acadêmico" Icon="@Icons.Material.Filled.School" Expanded="true">
-        <MudNavLink Href="/courses" Icon="@Icons.Material.Filled.MenuBook">Cursos</MudNavLink>
-        <MudNavLink Href="/courses/create" Icon="@Icons.Material.Filled.AddCircleOutline">Novo Curso</MudNavLink>
-        <MudNavLink Href="/subjects" Icon="@Icons.Material.Filled.Subject">Disciplinas</MudNavLink>
-        <MudNavLink Href="/subjects/create" Icon="@Icons.Material.Filled.PostAdd">Nova Disciplina</MudNavLink>
-        <MudNavLink Href="/students" Icon="@Icons.Material.Filled.People">Alunos</MudNavLink>
-        <MudNavLink Href="/students/create" Icon="@Icons.Material.Filled.PersonAddAlt1">Novo Aluno</MudNavLink>
-    </MudNavGroup>
+            <MudNavGroup Title="Acadêmico" Icon="@Icons.Material.Filled.School" Expanded="true">
+                <MudNavLink Href="/courses" Icon="@Icons.Material.Filled.MenuBook">Cursos</MudNavLink>
+                <MudNavLink Href="/courses/create" Icon="@Icons.Material.Filled.AddCircleOutline">Novo Curso</MudNavLink>
+                <MudNavLink Href="/subjects" Icon="@Icons.Material.Filled.Subject">Disciplinas</MudNavLink>
+                <MudNavLink Href="/subjects/create" Icon="@Icons.Material.Filled.PostAdd">Nova Disciplina</MudNavLink>
+                <MudNavLink Href="/students" Icon="@Icons.Material.Filled.People">Alunos</MudNavLink>
+                <MudNavLink Href="/students/create" Icon="@Icons.Material.Filled.PersonAddAlt1">Novo Aluno</MudNavLink>
+                <MudNavLink Href="/teachers" Icon="@Icons.Material.Filled.Person">Professores</MudNavLink>
+                <MudNavLink Href="/teachers/create" Icon="@Icons.Material.Filled.PersonAdd">Novo Professor</MudNavLink>
+            </MudNavGroup>
 
-    <MudNavGroup Title="Autenticação" Icon="@Icons.Material.Filled.Security" Expanded="false">
-        <MudNavLink Href="/auth/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
-        <MudNavLink Href="/auth/register" Icon="@Icons.Material.Filled.PersonAdd">Cadastro</MudNavLink>
-        <MudNavLink Href="/auth/forgot-password" Icon="@Icons.Material.Filled.LockReset">Recuperar Senha</MudNavLink>
-        <MudNavLink Href="/auth/reset-password" Icon="@Icons.Material.Filled.Key">Redefinir Senha</MudNavLink>
-        <MudNavLink Href="/auth/confirm-email" Icon="@Icons.Material.Filled.MarkEmailRead">Confirmar Email</MudNavLink>
-        <MudNavLink Href="/auth/manage" Icon="@Icons.Material.Filled.ManageAccounts">Meu Perfil / 2FA</MudNavLink>
-        <MudNavLink Href="/auth/manage-roles" Icon="@Icons.Material.Filled.AdminPanelSettings">Roles</MudNavLink>
-        <MudNavLink Href="/auth/manage-permissions" Icon="@Icons.Material.Filled.VerifiedUser">Permissões e Grupos</MudNavLink>
-    </MudNavGroup>
+            <MudNavGroup Title="Minha Conta" Icon="@Icons.Material.Filled.AccountCircle" Expanded="true">
+                <MudNavLink Href="/auth/manage" Icon="@Icons.Material.Filled.ManageAccounts">Meu Perfil / 2FA</MudNavLink>
+            </MudNavGroup>
+
+            <AuthorizeView Roles="Admin,Manager" Context="adminContext">
+                <Authorized>
+                    <MudNavGroup Title="Administração" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+                        <MudNavLink Href="/auth/manage-roles" Icon="@Icons.Material.Filled.Security">Roles</MudNavLink>
+                        <MudNavLink Href="/auth/manage-permissions" Icon="@Icons.Material.Filled.VerifiedUser">Permissões e Grupos</MudNavLink>
+                    </MudNavGroup>
+                </Authorized>
+            </AuthorizeView>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavGroup Title="Autenticação" Icon="@Icons.Material.Filled.Security" Expanded="true">
+                <MudNavLink Href="/auth/login" Icon="@Icons.Material.Filled.Login">Login</MudNavLink>
+                <MudNavLink Href="/auth/register" Icon="@Icons.Material.Filled.PersonAdd">Cadastro</MudNavLink>
+                <MudNavLink Href="/auth/forgot-password" Icon="@Icons.Material.Filled.LockReset">Recuperar Senha</MudNavLink>
+                <MudNavLink Href="/auth/reset-password" Icon="@Icons.Material.Filled.Key">Redefinir Senha</MudNavLink>
+                <MudNavLink Href="/auth/confirm-email" Icon="@Icons.Material.Filled.MarkEmailRead">Confirmar Email</MudNavLink>
+            </MudNavGroup>
+        </NotAuthorized>
+    </AuthorizeView>
 </MudNavMenu>

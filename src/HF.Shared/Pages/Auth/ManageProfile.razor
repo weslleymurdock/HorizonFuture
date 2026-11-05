@@ -1,6 +1,8 @@
 @page "/auth/manage"
+@attribute [Authorize]
 @inject ManageProfilePageModel PageModel
 @inject IDialogService DialogService
+@inject NavigationManager Navigation
 
 <PageTitle>@PageModel.Title</PageTitle>
 
@@ -234,15 +236,9 @@
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudTextField T="string"
-                                  Label="Refresh Token"
-                                  @bind-Value="PageModel.RefreshTokenInput"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Class="mb-3"
-                                  aria-label="Refresh Token"
-                                  HelperText="Carregado automaticamente da sessão ativa ou inserido manualmente"
-                                  Disabled="@PageModel.IsBusy" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        Gerencie a sessão ativa desta conta. A renovação de tokens ocorre de forma transparente e protegida.
+                    </MudText>
 
                     <div class="d-flex gap-2">
                         <MudButton Variant="Variant.Filled"
@@ -250,7 +246,7 @@
                                    OnClick="() => PageModel.RefreshTokensAsync()"
                                    Disabled="@PageModel.IsBusy"
                                    aria-label="Renovar Tokens de Autenticação">
-                            Renovar Tokens
+                            Renovar Sessão
                         </MudButton>
 
                         <MudButton Variant="Variant.Outlined"
@@ -284,7 +280,11 @@
 
         if (confirm == true)
         {
-            await PageModel.RevokeTokenAsync();
+            var revoked = await PageModel.RevokeTokenAsync();
+            if (revoked)
+            {
+                Navigation.NavigateTo("/auth/login", replace: true);
+            }
         }
     }
 

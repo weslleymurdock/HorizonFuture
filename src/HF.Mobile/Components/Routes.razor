@@ -1,8 +1,17 @@
-<Router AppAssembly="@typeof(Routes).Assembly"
-        AdditionalAssemblies="new[] { typeof(MainLayout).Assembly }"
-        NotFoundPage="@typeof(NotFound)">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Routes).Assembly"
+            AdditionalAssemblies="new[] { typeof(MainLayout).Assembly }"
+            NotFoundPage="@typeof(NotFound)">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+                <Authorizing>
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingAuthenticationState>

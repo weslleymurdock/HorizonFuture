@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@inject ITokenStore TokenStore
+@inject NavigationManager Navigation
 <style>
 /* Safe area adjustments for mobile and desktop hosts */
 ::deep .mud-appbar.mud-appbar-fixed-top {
@@ -32,6 +34,21 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@DrawerToggle" />
         <MudText Typo="Typo.h6" Class="ml-2">Horizon Future</MudText>
         <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-3 d-none d-sm-inline">
+                    @(context.User.Identity?.Name ?? "Usuário")
+                </MudText>
+                <MudTooltip Text="Encerrar Sessão">
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="LogoutAsync" aria-label="Sair da conta" />
+                </MudTooltip>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/auth/login" StartIcon="@Icons.Material.Filled.Login">
+                    Entrar
+                </MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
         <MudIconButton Icon="@(DarkLightModeButtonIcon)" Color="Color.Inherit" OnClick="@DarkModeToggle" />
     </MudAppBar>
 
@@ -59,6 +76,12 @@
             PaletteDark = _darkPalette,
             LayoutProperties = new LayoutProperties()
         };
+    }
+
+    private async Task LogoutAsync()
+    {
+        await TokenStore.ClearTokensAsync();
+        Navigation.NavigateTo("/auth/login", replace: true);
     }
 
     private void DrawerToggle()
