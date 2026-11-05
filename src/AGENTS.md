@@ -25,9 +25,9 @@ These instructions apply to `src/`. Read root `AGENTS.md` first.
 - Keep nullable and implicit usings enabled. Use explicit API contracts; do not expose persistence models directly.
 - Pass CancellationToken through async boundaries; avoid sync-over-async. Keep tests deterministic.
 - Bind typed options and validate startup configuration. Never commit secrets or production credentials.
-- Before choosing Turso/libSQL, test exact EF Core/provider versions for query translation, transactions, migrations, generated keys, constraints, concurrency, retries, backups, and restore.
+- Use PostgreSQL for the planned server store, with provider code isolated behind Infrastructure abstractions and portable migrations where practical. Validate EF Core/Npgsql transactions, migrations, generated keys, constraints, concurrency, retries, backup, and restore before production.
 - Version server and local schemas independently; stale clients need explicit compatibility.
-- Enforce tenant scope in server authorization and persistence, not only client filters.
+- Each installation serves one NGO. Enforce user, role, and school-unit authorization within that installation; do not add tenant-isolation assumptions to per-installation application data paths.
 - Recheck organization/unit membership for every operation. Device credentials are scoped and revocable, and do not replace user authorization.
 - Keep local edits + Outbox atomic, Inbox + server effect atomic, duplicate Push idempotent, Pull page + cursor atomic, and cursor opaque/server-issued.
 - Use optimistic concurrency and explicit conflict rules per entity. Never silently apply generic last-write-wins.
@@ -36,4 +36,4 @@ These instructions apply to `src/`. Read root `AGENTS.md` first.
 
 ## Tests
 
-Cover domain rules, cross-tenant denial, Outbox/Inbox atomicity, duplicate Push, cursor ordering/expiry, interrupted Pull, conflicts, local schema upgrades, and offline flows. Avoid live services except opt-in integration tests.
+Cover domain rules, within-NGO authorization denial, Outbox/Inbox atomicity, duplicate Push, cursor ordering/expiry, interrupted Pull, conflicts, local schema upgrades, and offline flows. Avoid live services except opt-in integration tests.

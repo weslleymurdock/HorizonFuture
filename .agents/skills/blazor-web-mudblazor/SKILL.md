@@ -20,7 +20,7 @@ Use the workspace MCP `mudblazor` for version-specific component details, parame
 - Bound table/grid results. Use paging for large datasets; do not load all student records into browser memory.
 - Apply shared theme tokens; avoid scattered colors/inline styles. Check keyboard use, focus, labels, contrast, screen readers, reduced motion, and responsive layouts.
 - A WASM client is untrusted. Never compile secrets or privileged keys into it. Browser storage is readable by the runtime; avoid sensitive data or credentials there by default.
-- The API enforces tenant membership; hidden controls and client-side filters do not.
+- The configured API belongs to one NGO installation and enforces user/role/school-unit permissions; hidden controls and client-side filters do not.
 - Until local persistence/sync is implemented, describe behavior as online-only where appropriate, not offline-first.
 
 ## Verification

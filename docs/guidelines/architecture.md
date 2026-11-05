@@ -6,26 +6,20 @@ The repository contains an ASP.NET Core API project and separate Domain, Applica
 
 ## Planned system
 
-The target is an offline-first .NET MAUI client with local SQLite, a browser Blazor WebAssembly client, an ASP.NET Core REST service, and a central relational store. Domain rules belong in Domain; use cases and ports in Application; concrete storage/network adapters in Infrastructure; HTTP transport and authorization enforcement in API; host wiring in Composition; UI and device integration stay in their respective clients.
+The target is an offline-first .NET MAUI client with local SQLite and an ASP.NET Core REST backend. Provision one independent backend deployment and PostgreSQL database per NGO. Configure each distributed MAUI app with that installation’s backend URL. A browser Blazor client, if used, is also configured for that installation. Normal operation does not depend on a shared cross-NGO database or service. Domain rules belong in Domain; use cases and ports in Application; storage/network adapters in Infrastructure; HTTP transport and authorization in API; host wiring in Composition; UI/device integration stay in their respective clients.
 
-## Database provider gate
+## Database provider
 
-Turso/libSQL is a candidate central database, not an assumed implementation choice. Before adopting it:
+PostgreSQL is the planned managed server database; Neon is selected for the largest verified free PostgreSQL storage among the evaluated providers as of 2026-11-03 (1 GB/project versus Supabase Free at 500 MB/project). Free limits are evaluation/development allowances, not production availability guarantees. See the [deployment manual](../deployment-manual.md) for source URLs and current caveats. Keep provider-specific code behind Infrastructure abstractions and migrations portable where practical. Validate exact EF Core/Npgsql versions, transactions, generated values, concurrency, retries, backup/restore, and migration behavior before production.
 
-1. Select exact EF Core and provider versions compatible with the repository's .NET target.
-2. Prove required LINQ/query translation, transactions, migrations, generated values, uniqueness/foreign keys, concurrency tokens, retry behavior, and connection lifecycle.
-3. Verify backup/restore, deployment networking, operational limits, and data residency/retention requirements for the NGO.
-4. Keep the experiment reproducible and record limitations and the decision.
-5. If an invariant cannot be preserved, evaluate another provider without coupling domain/application layers to Turso.
+The client SQLite schema and server schema are separately versioned. Offline clients may miss several server releases, so API and sync payload changes require explicit compatibility policy and migrations.
 
-The client SQLite schema and central schema are separately versioned. Offline clients may miss several server releases, so API and sync payload changes require explicit compatibility policy and migrations.
+## Installation and school-unit boundaries
 
-## Tenant and school-unit boundaries
-
-Derive organization and unit access from authenticated identity plus server-side memberships and roles. Any organization or school-unit identifier in a request is untrusted input and must be checked against those memberships. Decide whether each entity belongs to an organization, a unit, or both based on the domain model. Enforce scope in application authorization and persistence query/write paths, and test cross-tenant reads and writes.
+Each backend/database installation belongs to one NGO. Do not add tenant partitioning or tenant identifiers to the ordinary per-installation application data path. Within an NGO, authenticate users and enforce role, ownership, and school-unit permissions on the server for every operation; client filters are not authorization. An optional future cross-installation reporting/aggregation service must be separately deployed, explicitly authorized by each participating NGO, and isolated from normal app availability and sync.
 
 Media is stored outside relational rows. Relational records carry only authorized metadata and stable references. Transfer tokens, access paths, retention, deletion, and retry behavior need independent design.
 
 ## Decision records
 
-Document material choices such as provider selection, identity model, tenant key strategy, stable identifiers, cursor format, payload evolution, and media storage. Include alternatives considered, evidence, consequences, and migration implications.
+Document material choices such as provider selection, identity model, per-NGO installation boundaries, stable identifiers, cursor format, payload evolution, and media storage. Include alternatives considered, evidence, consequences, and migration implications.

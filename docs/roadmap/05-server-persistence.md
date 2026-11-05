@@ -10,20 +10,20 @@ Phases 01–04, including a passing phase 03 provider decision.
 
 ## Work
 
-- Map confirmed domain entities and tenant ownership to the chosen provider; enforce tenant keys, relationships, unique constraints, and concurrency metadata.
+- Map confirmed domain entities and within-installation ownership to the chosen provider; enforce relationships, unique constraints, and concurrency metadata.
 - Create versioned migrations and repeatable local/test database initialization. Define deployment migration ordering and rollback/recovery strategy.
 - Design Inbox idempotency records and ordered change-feed entries in a way that can be committed atomically with domain effects.
 - Define retention and cleanup policies for deduplication records, change feed, audit records, and tombstones while honoring client offline support.
 - Keep media in external object/file storage; store metadata and references in relational data.
-- Validate tenant-filtered access patterns and feed indexes with realistic synthetic data.
+- Validate within-installation authorized access patterns and feed indexes with realistic synthetic data.
 
 ## Acceptance criteria
 
 - Migrations create a fresh database and upgrade supported prior versions reproducibly.
 - Transaction tests prove domain writes, Inbox results, and feed entries commit or roll back together.
-- Constraints and queries enforce organization/unit boundaries.
+- Constraints and queries enforce ownership and authorization within the single-NGO installation; there is no tenant-partition key requirement in ordinary application data.
 - Backup, restore, retention, and tombstone behavior are documented and exercised in a non-production environment.
 
 ## Risks and open decisions
 
-Turso/libSQL viability remains conditional on phase 03. Retention windows must account for long-offline devices and privacy requirements.
+PostgreSQL provider compatibility remains subject to phase 03 evidence. Retention windows must account for long-offline devices and privacy requirements.
