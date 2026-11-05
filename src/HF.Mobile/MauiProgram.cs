@@ -1,4 +1,4 @@
-﻿using HF.Shared.PageModels;
+﻿using HF.Shared;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 
@@ -24,8 +24,7 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		builder.Services.AddScoped<PageModelBase>();
-		builder.Services.AddScoped<HomePageModel>();
+		builder.Services.AddPageModels();
 
 		return builder.Build();
 	}
