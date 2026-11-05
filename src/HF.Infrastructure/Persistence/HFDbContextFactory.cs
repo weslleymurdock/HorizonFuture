@@ -18,7 +18,7 @@ internal sealed class HFDbContextFactory : IDesignTimeDbContextFactory<HFDbConte
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString("PostgresConnection");
+        var connectionString = configuration.GetConnectionString("PostgresConnection")?.Trim('"', '\'');
 
         var optionsBuilder = new DbContextOptionsBuilder<HFDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

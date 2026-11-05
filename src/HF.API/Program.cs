@@ -1,5 +1,8 @@
+using dotenv.net;
 using HF.Composition.Extensions;
-dotenv.net.DotEnv.Load();
+
+DotEnv.Load(options: new DotEnvOptions(probeForEnv: true, probeLevelsToSearch: 5));
+
 var builder = WebApplication.CreateBuilder(args);
 await builder
     .BuildHF(builder.Environment)
