@@ -1,64 +1,53 @@
-using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using HF.Client;
+using HF.Client.Models;
 using HF.Shared.Auth.Models;
+using Microsoft.Kiota.Abstractions;
 
 namespace HF.Shared.Auth;
 
+/// <summary>
+/// Serviço compartilhado que encapsula o cliente Kiota de HF.Client,
+/// adaptando as chamadas REST para os PageModels e a camada de UI sem construir requisições manuais.
+/// </summary>
 public class AuthService : IAuthService
 {
-    private readonly HttpClient _httpClient;
+    private readonly ApiClient _apiClient;
     private readonly ITokenStore _tokenStore;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
-    public AuthService(HttpClient? httpClient = null, ITokenStore? tokenStore = null)
+    public AuthService(ApiClient apiClient, ITokenStore tokenStore)
     {
-        _httpClient = httpClient ?? new HttpClient();
-        _tokenStore = tokenStore ?? new InMemoryTokenStore();
+        _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+        _tokenStore = tokenStore ?? throw new ArgumentNullException(nameof(tokenStore));
     }
 
-    private async Task SetAuthorizationHeaderAsync(HttpRequestMessage request)
-    {
-        var token = await _tokenStore.GetAccessTokenAsync();
-        if (!string.IsNullOrWhiteSpace(token))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        }
-    }
-
-    private async Task<HttpResponseMessage> SendWithAuthAsync(HttpRequestMessage request, CancellationToken ct)
-    {
-        await SetAuthorizationHeaderAsync(request);
-        return await _httpClient.SendAsync(request, ct);
-    }
-
-    public async Task<AuthResult<IdentityResultDto>> RegisterAsync(RegisterDto request, CancellationToken ct = default)
+    public async Task<AuthResult<IdentityResultDto>> RegisterAsync(Auth.Models.RegisterDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/register", request, JsonOptions, ct);
-            if (response.IsSuccessStatusCode)
+            var kiotaDto = new Client.Models.RegisterDto
             {
-                return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Usuário registrado com sucesso.");
-            }
+                Email = request.Email,
+                Password = request.Password
+            };
 
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (identityResult is not null)
-            {
-                return AuthResult<IdentityResultDto>.Fail(
-                    string.Join("; ", identityResult.Errors),
-                    identityResult.Errors,
-                    (int)response.StatusCode);
-            }
-
-            var errorText = await response.Content.ReadAsStringAsync(ct);
-            return AuthResult<IdentityResultDto>.Fail(
-                string.IsNullOrWhiteSpace(errorText) ? "Falha ao registrar usuário." : errorText,
-                statusCode: (int)response.StatusCode);
+            await _apiClient.Api.V1.Auth.Register.PostAsync(kiotaDto, cancellationToken: ct);
+            return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Usuário registrado com sucesso.");
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -66,31 +55,40 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<TokenResponseDto>> LoginAsync(LoginDto request, CancellationToken ct = default)
+    public async Task<AuthResult<TokenResponseDto>> LoginAsync(Auth.Models.LoginDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/login", request, JsonOptions, ct);
-            if (response.IsSuccessStatusCode)
+            var kiotaDto = new Client.Models.LoginDto
             {
-                var tokenResult = await response.Content.ReadFromJsonAsync<TokenResponseDto>(JsonOptions, ct);
-                if (tokenResult is not null)
-                {
-                    await _tokenStore.SaveTokensAsync(tokenResult.AccessToken, tokenResult.RefreshToken);
-                    return AuthResult<TokenResponseDto>.Ok(tokenResult, "Login efetuado com sucesso.");
-                }
+                Email = request.Email,
+                Password = request.Password,
+                TwoFactorCode = request.TwoFactorCode,
+                TwoFactorRecoveryCode = request.TwoFactorRecoveryCode
+            };
+
+            var tokenResponse = await _apiClient.Api.V1.Auth.Login.PostAsync(kiotaDto, cancellationToken: ct);
+            if (tokenResponse is not null && !string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+            {
+                await _tokenStore.SaveTokensAsync(tokenResponse.AccessToken, tokenResponse.RefreshToken);
+                var dto = new TokenResponseDto(
+                    tokenResponse.TokenType ?? "Bearer",
+                    tokenResponse.AccessToken,
+                    tokenResponse.ExpiresIn ?? 3600,
+                    tokenResponse.RefreshToken ?? string.Empty);
+
+                return AuthResult<TokenResponseDto>.Ok(dto, "Login efetuado com sucesso.");
             }
 
-            var failureEnvelope = await TryReadJsonAsync<ApiResponseEnvelope<TokenResponseDto>>(response, ct);
-            if (failureEnvelope is not null)
-            {
-                return AuthResult<TokenResponseDto>.Fail(failureEnvelope.Message, statusCode: (int)response.StatusCode);
-            }
-
-            var errorText = await response.Content.ReadAsStringAsync(ct);
-            return AuthResult<TokenResponseDto>.Fail(
-                string.IsNullOrWhiteSpace(errorText) ? "Credenciais inválidas ou erro no login." : errorText,
-                statusCode: (int)response.StatusCode);
+            return AuthResult<TokenResponseDto>.Fail("Falha ao autenticar usuário.");
+        }
+        catch (Client.Models.ResponseBaseOfTokenResponse ex)
+        {
+            return AuthResult<TokenResponseDto>.Fail(ex.Message ?? "Credenciais inválidas.", statusCode: ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<TokenResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -98,28 +96,37 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<TokenResponseDto>> RefreshTokenAsync(RefreshDto request, CancellationToken ct = default)
+    public async Task<AuthResult<TokenResponseDto>> RefreshTokenAsync(Auth.Models.RefreshDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/refresh", request, JsonOptions, ct);
-            if (response.IsSuccessStatusCode)
+            var kiotaDto = new Client.Models.RefreshDto
             {
-                var tokenResult = await response.Content.ReadFromJsonAsync<TokenResponseDto>(JsonOptions, ct);
-                if (tokenResult is not null)
-                {
-                    await _tokenStore.SaveTokensAsync(tokenResult.AccessToken, tokenResult.RefreshToken);
-                    return AuthResult<TokenResponseDto>.Ok(tokenResult, "Token renovado com sucesso.");
-                }
+                RefreshToken = request.RefreshToken
+            };
+
+            var tokenResponse = await _apiClient.Api.V1.Auth.Refresh.PostAsync(kiotaDto, cancellationToken: ct);
+            if (tokenResponse is not null && !string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+            {
+                await _tokenStore.SaveTokensAsync(tokenResponse.AccessToken, tokenResponse.RefreshToken);
+                var dto = new TokenResponseDto(
+                    tokenResponse.TokenType ?? "Bearer",
+                    tokenResponse.AccessToken,
+                    tokenResponse.ExpiresIn ?? 3600,
+                    tokenResponse.RefreshToken ?? string.Empty);
+
+                return AuthResult<TokenResponseDto>.Ok(dto, "Token renovado com sucesso.");
             }
 
-            var failureEnvelope = await TryReadJsonAsync<ApiResponseEnvelope<TokenResponseDto>>(response, ct);
-            if (failureEnvelope is not null)
-            {
-                return AuthResult<TokenResponseDto>.Fail(failureEnvelope.Message, statusCode: (int)response.StatusCode);
-            }
-
-            return AuthResult<TokenResponseDto>.Fail("Falha ao renovar token.", statusCode: (int)response.StatusCode);
+            return AuthResult<TokenResponseDto>.Fail("Falha ao renovar token.");
+        }
+        catch (Client.Models.ResponseBaseOfTokenResponse ex)
+        {
+            return AuthResult<TokenResponseDto>.Fail(ex.Message ?? "Falha ao renovar token.", statusCode: ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<TokenResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -131,21 +138,17 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, "api/v1/auth/revoke");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                await _tokenStore.ClearTokensAsync();
-                return AuthResult.Ok("Sessão revogada com sucesso.");
-            }
-
-            var failureEnvelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (failureEnvelope is not null)
-            {
-                return AuthResult.Fail(failureEnvelope.Message, statusCode: (int)response.StatusCode);
-            }
-
-            return AuthResult.Fail("Falha ao revogar token.", statusCode: (int)response.StatusCode);
+            await _apiClient.Api.V1.Auth.Revoke.PostAsync(cancellationToken: ct);
+            await _tokenStore.ClearTokensAsync();
+            return AuthResult.Ok("Sessão revogada com sucesso.");
+        }
+        catch (Client.Models.ResponseBaseOfboolean ex)
+        {
+            return AuthResult.Fail(ex.Message ?? "Falha ao revogar sessão.", statusCode: ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -157,25 +160,22 @@ public class AuthService : IAuthService
     {
         try
         {
-            var url = $"api/v1/auth/confirmEmail?userId={Uri.EscapeDataString(userId)}&code={Uri.EscapeDataString(code)}";
-            if (!string.IsNullOrWhiteSpace(changedEmail))
+            await _apiClient.Api.V1.Auth.ConfirmEmail.GetAsync(reqConfig =>
             {
-                url += $"&changedEmail={Uri.EscapeDataString(changedEmail)}";
-            }
+                reqConfig.QueryParameters.UserId = userId;
+                reqConfig.QueryParameters.Code = code;
+                reqConfig.QueryParameters.ChangedEmail = changedEmail;
+            }, cancellationToken: ct);
 
-            var response = await _httpClient.GetAsync(url, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return AuthResult<bool>.Ok(true, "Email confirmado com sucesso.");
-            }
-
-            var failureEnvelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (failureEnvelope is not null)
-            {
-                return AuthResult<bool>.Fail(failureEnvelope.Message, statusCode: (int)response.StatusCode);
-            }
-
-            return AuthResult<bool>.Fail("Falha ao confirmar email.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Ok(true, "Email confirmado com sucesso.");
+        }
+        catch (Client.Models.ResponseBaseOfboolean ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message ?? "Falha ao confirmar email.", statusCode: ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -183,23 +183,28 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<IdentityResultDto>> ResendConfirmationEmailAsync(EmailDto request, CancellationToken ct = default)
+    public async Task<AuthResult<IdentityResultDto>> ResendConfirmationEmailAsync(Auth.Models.EmailDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/resendConfirmationEmail", request, JsonOptions, ct);
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (response.IsSuccessStatusCode && identityResult?.Succeeded == true)
-            {
-                return AuthResult<IdentityResultDto>.Ok(identityResult, "Email de confirmação reenviado.");
-            }
+            var kiotaDto = new Client.Models.EmailDto { Email = request.Email };
+            var result = await _apiClient.Api.V1.Auth.ResendConfirmationEmail.PostAsync(kiotaDto, cancellationToken: ct);
+            var errors = result?.Errors?.ToList() ?? new List<string>();
+            var succeeded = result?.Succeeded ?? false;
+            var dto = new IdentityResultDto(succeeded, errors);
 
-            if (identityResult is not null)
-            {
-                return AuthResult<IdentityResultDto>.Fail(string.Join("; ", identityResult.Errors), identityResult.Errors, (int)response.StatusCode);
-            }
-
-            return AuthResult<IdentityResultDto>.Fail("Falha ao reenviar confirmação de email.", statusCode: (int)response.StatusCode);
+            return succeeded
+                ? AuthResult<IdentityResultDto>.Ok(dto, "Email de confirmação reenviado.")
+                : AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors);
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -207,23 +212,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<IdentityResultDto>> ForgotPasswordAsync(EmailDto request, CancellationToken ct = default)
+    public async Task<AuthResult<IdentityResultDto>> ForgotPasswordAsync(Auth.Models.EmailDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/forgotPassword", request, JsonOptions, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Instruções de recuperação enviadas.");
-            }
-
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (identityResult is not null)
-            {
-                return AuthResult<IdentityResultDto>.Fail(string.Join("; ", identityResult.Errors), identityResult.Errors, (int)response.StatusCode);
-            }
-
-            return AuthResult<IdentityResultDto>.Fail("Falha ao solicitar recuperação de senha.", statusCode: (int)response.StatusCode);
+            var kiotaDto = new Client.Models.EmailDto { Email = request.Email };
+            await _apiClient.Api.V1.Auth.ForgotPassword.PostAsync(kiotaDto, cancellationToken: ct);
+            return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Instruções de recuperação enviadas.");
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -231,23 +235,28 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<IdentityResultDto>> ResetPasswordAsync(ResetPasswordDto request, CancellationToken ct = default)
+    public async Task<AuthResult<IdentityResultDto>> ResetPasswordAsync(Auth.Models.ResetPasswordDto request, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/auth/resetPassword", request, JsonOptions, ct);
-            if (response.IsSuccessStatusCode)
+            var kiotaDto = new Client.Models.ResetPasswordDto
             {
-                return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Senha redefinida com sucesso.");
-            }
+                Email = request.Email,
+                ResetCode = request.ResetCode,
+                NewPassword = request.NewPassword
+            };
 
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (identityResult is not null)
-            {
-                return AuthResult<IdentityResultDto>.Fail(string.Join("; ", identityResult.Errors), identityResult.Errors, (int)response.StatusCode);
-            }
-
-            return AuthResult<IdentityResultDto>.Fail("Falha ao redefinir senha.", statusCode: (int)response.StatusCode);
+            await _apiClient.Api.V1.Auth.ResetPassword.PostAsync(kiotaDto, cancellationToken: ct);
+            return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Senha redefinida com sucesso.");
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -259,18 +268,28 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, "api/v1/auth/manage/info");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
+            var info = await _apiClient.Api.V1.Auth.Manage.Info.GetAsync(cancellationToken: ct);
+            if (info is not null)
             {
-                var info = await response.Content.ReadFromJsonAsync<IdentityInfoDto>(JsonOptions, ct);
-                if (info is not null)
-                {
-                    return AuthResult<IdentityInfoDto>.Ok(info);
-                }
+                var dto = new IdentityInfoDto(
+                    info.Email ?? string.Empty,
+                    info.IsEmailConfirmed ?? false,
+                    info.DisplayName,
+                    info.FirstName,
+                    info.SurName);
+
+                return AuthResult<IdentityInfoDto>.Ok(dto);
             }
 
-            return AuthResult<IdentityInfoDto>.Fail("Falha ao obter informações do usuário.", statusCode: (int)response.StatusCode);
+            return AuthResult<IdentityInfoDto>.Fail("Informações de usuário não encontradas.", statusCode: 404);
+        }
+        catch (Client.Models.ResponseBaseOfIdentityInfoResponse ex)
+        {
+            return AuthResult<IdentityInfoDto>.Fail(ex.Message ?? "Usuário não encontrado.", statusCode: ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityInfoDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -278,27 +297,28 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<IdentityResultDto>> UpdateIdentityInfoAsync(InfoDto request, CancellationToken ct = default)
+    public async Task<AuthResult<IdentityResultDto>> UpdateIdentityInfoAsync(Auth.Models.InfoDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, "api/v1/auth/manage/info")
+            var kiotaDto = new Client.Models.InfoDto
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
+                NewEmail = request.NewEmail,
+                NewPassword = request.NewPassword,
+                OldPassword = request.OldPassword
             };
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Informações atualizadas.");
-            }
 
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (identityResult is not null)
-            {
-                return AuthResult<IdentityResultDto>.Fail(string.Join("; ", identityResult.Errors), identityResult.Errors, (int)response.StatusCode);
-            }
-
-            return AuthResult<IdentityResultDto>.Fail("Falha ao atualizar informações.", statusCode: (int)response.StatusCode);
+            await _apiClient.Api.V1.Auth.Manage.Info.PostAsync(kiotaDto, cancellationToken: ct);
+            return AuthResult<IdentityResultDto>.Ok(new IdentityResultDto(true, Array.Empty<string>()), "Informações atualizadas.");
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<IdentityResultDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IdentityResultDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -306,31 +326,42 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<TwoFactorResponseDto>> ConfigureTwoFactorAsync(TwoFactorDto request, CancellationToken ct = default)
+    public async Task<AuthResult<TwoFactorResponseDto>> ConfigureTwoFactorAsync(Auth.Models.TwoFactorDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, "api/v1/auth/manage/2fa")
+            var kiotaDto = new Client.Models.TwoFactorDto
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
+                Enable = request.Enable,
+                TwoFactorCode = request.TwoFactorCode,
+                ResetRecoveryCodes = request.ResetRecoveryCodes,
+                ResetSharedKey = request.ResetSharedKey,
+                ForgetMachine = request.ForgetMachine
             };
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
+
+            var twoFa = await _apiClient.Api.V1.Auth.Manage.Twofa.PostAsync(kiotaDto, cancellationToken: ct);
+            if (twoFa is not null)
             {
-                var twoFa = await response.Content.ReadFromJsonAsync<TwoFactorResponseDto>(JsonOptions, ct);
-                if (twoFa is not null)
-                {
-                    return AuthResult<TwoFactorResponseDto>.Ok(twoFa, "2FA configurado com sucesso.");
-                }
+                var dto = new TwoFactorResponseDto(
+                    twoFa.SharedKey,
+                    twoFa.RecoveryCodesLeft ?? 0,
+                    twoFa.RecoveryCodes?.ToList(),
+                    twoFa.IsTwoFactorEnabled ?? false,
+                    twoFa.IsMachineRemembered ?? false);
+
+                return AuthResult<TwoFactorResponseDto>.Ok(dto, "2FA configurado com sucesso.");
             }
 
-            var identityResult = await TryReadJsonAsync<IdentityResultDto>(response, ct);
-            if (identityResult is not null)
-            {
-                return AuthResult<TwoFactorResponseDto>.Fail(string.Join("; ", identityResult.Errors), identityResult.Errors, (int)response.StatusCode);
-            }
-
-            return AuthResult<TwoFactorResponseDto>.Fail("Falha ao configurar 2FA.", statusCode: (int)response.StatusCode);
+            return AuthResult<TwoFactorResponseDto>.Fail("Falha ao configurar 2FA.");
+        }
+        catch (Client.Models.IdentityResultResponse ex)
+        {
+            var errors = ex.Errors?.ToList() ?? new List<string>();
+            return AuthResult<TwoFactorResponseDto>.Fail(string.Join("; ", errors), errors, ex.ResponseStatusCode);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<TwoFactorResponseDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -342,18 +373,15 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, "api/v1/auth/roles");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
-            {
-                var envelope = await response.Content.ReadFromJsonAsync<ApiResponseEnvelope<IReadOnlyList<RoleCatalogItemDto>>>(JsonOptions, ct);
-                if (envelope?.Value is not null)
-                {
-                    return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Ok(envelope.Value);
-                }
-            }
+            var response = await _apiClient.Api.V1.Auth.Roles.GetAsync(cancellationToken: ct);
+            var list = response?.Value?.Select(r => new RoleCatalogItemDto(r.RoleName ?? string.Empty, r.Rank ?? 0)).ToList()
+                ?? new List<RoleCatalogItemDto>();
 
-            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Fail("Falha ao obter catálogo de roles.", statusCode: (int)response.StatusCode);
+            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Ok(list);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<IReadOnlyList<RoleCatalogItemDto>>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -365,18 +393,21 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/roles");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Roles.GetAsync(cancellationToken: ct);
+            if (response?.Value is not null)
             {
-                var envelope = await response.Content.ReadFromJsonAsync<ApiResponseEnvelope<UserRolesDto>>(JsonOptions, ct);
-                if (envelope?.Value is not null)
-                {
-                    return AuthResult<UserRolesDto>.Ok(envelope.Value);
-                }
+                var dto = new UserRolesDto(
+                    response.Value.UserId ?? userId,
+                    response.Value.Roles?.ToList() ?? new List<string>());
+
+                return AuthResult<UserRolesDto>.Ok(dto);
             }
 
-            return AuthResult<UserRolesDto>.Fail("Falha ao obter roles do usuário.", statusCode: (int)response.StatusCode);
+            return AuthResult<UserRolesDto>.Fail(response?.Message ?? "Roles não encontradas.", statusCode: 404);
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<UserRolesDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -384,22 +415,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<bool>> AssignUserRoleAsync(string userId, AssignRoleDto request, CancellationToken ct = default)
+    public async Task<AuthResult<bool>> AssignUserRoleAsync(string userId, Auth.Models.AssignRoleDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/roles")
+            var kiotaDto = new Client.Models.AssignRoleDto { RoleName = request.RoleName };
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Roles.PostAsync(kiotaDto, cancellationToken: ct);
+            if (response?.Success == true)
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
-            };
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
-            {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Role atribuída.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao atribuir role.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao atribuir role.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -411,15 +442,17 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Delete, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/roles/{Uri.EscapeDataString(roleName)}");
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Roles[roleName].DeleteAsync(cancellationToken: ct);
+            if (response?.Success == true)
             {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Role removida.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao remover role.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao remover role.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -431,18 +464,39 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, "api/v1/auth/permissions");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
+            var response = await _apiClient.Api.V1.Auth.Permissions.GetAsync(cancellationToken: ct);
+            if (response?.Value is not null)
             {
-                var envelope = await response.Content.ReadFromJsonAsync<ApiResponseEnvelope<PermissionCatalogDto>>(JsonOptions, ct);
-                if (envelope?.Value is not null)
+                var permissions = response.Value.Permissions?.ToList() ?? new List<string>();
+                var groups = new Dictionary<string, IReadOnlyList<string>>();
+
+                if (response.Value.Groups?.AdditionalData is not null)
                 {
-                    return AuthResult<PermissionCatalogDto>.Ok(envelope.Value);
+                    foreach (var kvp in response.Value.Groups.AdditionalData)
+                    {
+                        if (kvp.Value is IEnumerable list)
+                        {
+                            var items = new List<string>();
+                            foreach (var item in list)
+                            {
+                                if (item is not null)
+                                {
+                                    items.Add(item.ToString()!);
+                                }
+                            }
+                            groups[kvp.Key] = items;
+                        }
+                    }
                 }
+
+                return AuthResult<PermissionCatalogDto>.Ok(new PermissionCatalogDto(permissions, groups));
             }
 
-            return AuthResult<PermissionCatalogDto>.Fail("Falha ao obter catálogo de permissões.", statusCode: (int)response.StatusCode);
+            return AuthResult<PermissionCatalogDto>.Fail("Catálogo de permissões não disponível.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<PermissionCatalogDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -454,18 +508,24 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Get, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/permissions");
-            var response = await SendWithAuthAsync(req, ct);
-            if (response.IsSuccessStatusCode)
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Permissions.GetAsync(cancellationToken: ct);
+            if (response?.Value is not null)
             {
-                var envelope = await response.Content.ReadFromJsonAsync<ApiResponseEnvelope<UserPermissionsDto>>(JsonOptions, ct);
-                if (envelope?.Value is not null)
-                {
-                    return AuthResult<UserPermissionsDto>.Ok(envelope.Value);
-                }
+                var dto = new UserPermissionsDto(
+                    response.Value.UserId ?? userId,
+                    response.Value.EffectivePermissions?.ToList() ?? new List<string>(),
+                    response.Value.DirectGrants?.ToList() ?? new List<string>(),
+                    response.Value.ExplicitRevocations?.ToList() ?? new List<string>(),
+                    response.Value.AssignedGroups?.ToList() ?? new List<string>());
+
+                return AuthResult<UserPermissionsDto>.Ok(dto);
             }
 
-            return AuthResult<UserPermissionsDto>.Fail("Falha ao obter permissões do usuário.", statusCode: (int)response.StatusCode);
+            return AuthResult<UserPermissionsDto>.Fail(response?.Message ?? "Permissões não encontradas.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<UserPermissionsDto>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -473,22 +533,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<bool>> GrantUserPermissionAsync(string userId, GrantPermissionDto request, CancellationToken ct = default)
+    public async Task<AuthResult<bool>> GrantUserPermissionAsync(string userId, Auth.Models.GrantPermissionDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/permissions/grant")
+            var kiotaDto = new Client.Models.GrantPermissionDto { PermissionName = request.PermissionName };
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Permissions.Grant.PostAsync(kiotaDto, cancellationToken: ct);
+            if (response?.Success == true)
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
-            };
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
-            {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Permissão concedida.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao conceder permissão.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao conceder permissão.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -496,22 +556,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<bool>> RevokeUserPermissionAsync(string userId, RevokePermissionDto request, CancellationToken ct = default)
+    public async Task<AuthResult<bool>> RevokeUserPermissionAsync(string userId, Auth.Models.RevokePermissionDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/permissions/revoke")
+            var kiotaDto = new Client.Models.RevokePermissionDto { PermissionName = request.PermissionName };
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Permissions.Revoke.PostAsync(kiotaDto, cancellationToken: ct);
+            if (response?.Success == true)
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
-            };
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
-            {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Permissão revogada.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao revogar permissão.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao revogar permissão.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -523,15 +583,17 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Delete, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/permissions/{Uri.EscapeDataString(permissionName)}");
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Permissions[permissionName].DeleteAsync(cancellationToken: ct);
+            if (response?.Success == true)
             {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Override de permissão limpo.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao limpar override de permissão.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao limpar override de permissão.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -539,22 +601,22 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<AuthResult<bool>> AssignUserPermissionGroupAsync(string userId, AssignPermissionGroupDto request, CancellationToken ct = default)
+    public async Task<AuthResult<bool>> AssignUserPermissionGroupAsync(string userId, Auth.Models.AssignPermissionGroupDto request, CancellationToken ct = default)
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Post, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/groups")
+            var kiotaDto = new Client.Models.AssignPermissionGroupDto { GroupName = request.GroupName };
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Groups.PostAsync(kiotaDto, cancellationToken: ct);
+            if (response?.Success == true)
             {
-                Content = JsonContent.Create(request, options: JsonOptions)
-            };
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
-            {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Grupo associado.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao associar grupo.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao associar grupo.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
@@ -566,32 +628,21 @@ public class AuthService : IAuthService
     {
         try
         {
-            var req = new HttpRequestMessage(HttpMethod.Delete, $"api/v1/auth/users/{Uri.EscapeDataString(userId)}/groups/{Uri.EscapeDataString(groupName)}");
-            var response = await SendWithAuthAsync(req, ct);
-            var envelope = await TryReadJsonAsync<ApiResponseEnvelope<bool>>(response, ct);
-            if (response.IsSuccessStatusCode && envelope?.Success == true)
+            var response = await _apiClient.Api.V1.Auth.Users[userId].Groups[groupName].DeleteAsync(cancellationToken: ct);
+            if (response?.Success == true)
             {
-                return AuthResult<bool>.Ok(true, envelope.Message);
+                return AuthResult<bool>.Ok(true, response.Message ?? "Grupo desassociado.");
             }
 
-            return AuthResult<bool>.Fail(envelope?.Message ?? "Falha ao desassociar grupo.", statusCode: (int)response.StatusCode);
+            return AuthResult<bool>.Fail(response?.Message ?? "Falha ao desassociar grupo.");
+        }
+        catch (ApiException ex)
+        {
+            return AuthResult<bool>.Fail(ex.Message, statusCode: ex.ResponseStatusCode);
         }
         catch (Exception ex)
         {
             return AuthResult<bool>.Fail($"Erro na requisição: {ex.Message}");
         }
     }
-
-    private static async Task<T?> TryReadJsonAsync<T>(HttpResponseMessage response, CancellationToken ct)
-    {
-        try
-        {
-            return await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);
-        }
-        catch
-        {
-            return default;
-        }
-    }
 }
-
