@@ -1,94 +1,108 @@
 # HF.UITests - Testes de UI (Web, Mobile e Shared)
 
-Este projeto contém a suíte de testes de interface de usuário (UI) e integração de fluxo para a feature de **Autenticação (Auth)** do Horizon – Olhar do Futuro, abrangendo tanto a plataforma Web (Blazor WebAssembly via Selenium) quanto a plataforma Mobile (.NET MAUI Blazor Hybrid via Appium), além de testes de integração observáveis dos comportamentos compartilhados em `HF.Shared`.
+This project contains the user interface (UI) and workflow integration test suite for the **Authentication (Auth)** feature of *Horizon – Olhar do Futuro*. It covers both the Web platform (Blazor WebAssembly via Selenium) and the Mobile platform (.NET MAUI Blazor Hybrid via Appium), as well as integration tests for shared behaviors defined in `HF.Shared`.
 
 ---
 
-## Estrutura do Projeto
+## Project Structure
 
-```
+```text
 tests/HF.UITests/
-├── Shared/                                   # Comportamentos observáveis e resolução DI compartilhada
+├── Shared/                                   # Observable behaviors and shared DI resolution
 │   ├── Fakes/
-│   │   └── FakeAuthService.cs                # Mock determinístico do IAuthService para testes de PageModel
-│   ├── SharedAuthPageModelsTests.cs          # Testes de unidade e fluxo dos 8 PageModels da UI Auth
-│   └── SharedAuthRouteAndComponentDiscoveryTests.cs # Validação de rotas @page e resolução Scoped via AddPageModels()
-├── Web/                                      # Testes de UI para HF.Web (Selenium WebDriver)
-│   └── WebAuthFlowUITests.cs                 # Fluxos de login, cadastro, recuperação de senha, perfil, roles e permissões
-├── Mobile/                                   # Testes de UI para HF.Mobile (Appium WebDriver)
-│   └── MobileAuthFlowUITests.cs              # Automação no BlazorWebView mobile (Android/iOS)
+│   │   └── FakeAuthService.cs                # Deterministic mock of IAuthService for PageModel testing
+│   ├── SharedAuthPageModelsTests.cs          # Unit and flow tests for the 8 PageModels in the Auth UI
+│   └── SharedAuthRouteAndComponentDiscoveryTests.cs # Validation of @page routes and Scoped resolution via AddPageModels()
+├── Web/                                      # UI tests for HF.Web (Selenium WebDriver)
+│   └── WebAuthFlowUITests.cs                 # Login, registration, password recovery, profile, roles, and permissions flows
+├── Mobile/                                   # UI tests for HF.Mobile (Appium WebDriver)
+│   └── MobileAuthFlowUITests.cs              # Automation in BlazorWebView for mobile (Android/iOS)
 └── README.md
 ```
 
 ---
 
-## 1. Testes de `HF.Shared` (Integração e Contratos Observáveis)
+## 1. `HF.Shared` Tests (Integration and Observable Contracts)
 
-Os testes de `HF.Shared` validam:
-- A correta exportação de todas as 8 páginas Razor com suas rotas correspondentes (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/confirm-email`, `/auth/manage`, `/auth/manage-roles`, `/auth/manage-permissions`).
-- A resolução de cada PageModel como serviço `Scoped` através de `services.AddPageModels()`, garantindo compatibilidade direta com `HF.Web` e `HF.Mobile`.
-- As regras de validação de formulários, estados de carregamento (`IsBusy`), tratamento de erros e respostas de sucesso.
+The `HF.Shared` tests validate:
 
-### Como Executar
+- The correct export of all 8 Razor Pages, along with their corresponding routes (`/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/confirm-email`, `/auth/manage`, `/auth/manage-roles`, `/auth/manage-permissions`).
+- The resolution of each `PageModel` as a `Scoped` service via `services.AddPageModels()`, ensuring direct compatibility with `HF.Web` and `HF.Mobile`.
+- Form validation rules, loading states (`IsBusy`), error handling, and success responses.
+
+### How to Run
+
 ```bash
 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Shared"
 ```
 
 ---
 
-## 2. Testes de `HF.Web` (Selenium WebDriver)
+## 2. `HF.Web` Tests (Selenium WebDriver)
 
-Os testes de `HF.Web` cobrem a interação com componentes MudBlazor em navegador web:
-- Validação e submissão do formulário de Login (com e sem 2FA).
-- Validação de senhas divergentes e registro de usuário.
-- Fluxo de recuperação e redefinição de senha com código.
-- Confirmação de email e reenvio.
-- Telas administrativas de gerenciamento de Roles, Permissões e Perfil/2FA.
+The `HF.Web` tests cover interactions with MudBlazor components within a web browser:
 
-### Pré-requisitos
-1. **Google Chrome / Chromium**: Instalado no ambiente (`google-chrome` ou `chromium-browser`).
-2. **ChromeDriver**: Versão compatível com a versão instalada do Chrome no PATH do sistema.
-3. **Servidor Web e API**:
-   - `HF.API` em execução (ex: `http://localhost:5268`).
-   - `HF.Web` em execução (ex: `http://localhost:5000`).
+- Login form validation and submission (with and without 2FA).
+- Validation of mismatched passwords and user registration.
+- Password recovery and reset flow using a code.
+- Email confirmation and resend functionality.
+- Administrative screens for managing roles, permissions, and user profiles/2FA.
 
-### Variáveis de Ambiente
-- `HF_WEB_BASE_URL`: URL base do Blazor Web (padrão: `http://localhost:5000`).
+### Prerequisites
 
-### Como Executar
+1. **Google Chrome / Chromium**: Must be installed in the environment (`google-chrome` or `chromium-browser`).
+2. **ChromeDriver**: A version compatible with the installed Chrome browser, present in the system PATH.
+3. **Web Server and API**:
+
+- `HF.API` must be running (e.g., `http://localhost:5268`).
+- `HF.Web` must be running (e.g., `http://localhost:5000`).
+
+### Environment Variables
+
+- `HF_WEB_BASE_URL`: The base URL for the Blazor Web application (default: `http://localhost:5000`).
+
+### How to Run
+
 ```bash
 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Web"
 ```
-*Nota: Se o ChromeDriver não for detectado no ambiente, os testes com Selenium utilizarão `Assert.Skip` informando os requisitos pendentes sem falha falsa de compilação.*
+
+*Note: If ChromeDriver is not detected in the environment, Selenium tests will use `Assert.Skip` to report the pending requirements, avoiding false build failures.*
 
 ---
 
-## 3. Testes de `HF.Mobile` (Appium WebDriver)
+## 3. `HF.Mobile` Tests (Appium WebDriver)
 
-Os testes de `HF.Mobile` validam o comportamento do app em viewport móvel e dentro do `BlazorWebView` híbrido no Android.
+The `HF.Mobile` tests validate the app's behavior within a mobile viewport and inside the hybrid `BlazorWebView` on Android.
 
-### Pré-requisitos
+### Pre-requisites
+
 1. **Node.js e Appium 2.x**:
+
    ```bash
    npm install -g appium
    appium driver install uiautomator2
    ```
+
 2. **Android SDK e Emulador**:
-   - Android SDK instalado com ferramentas de build e plataforma API 24+.
-   - Emulador Android em execução (`emulator -avd <nome_do_avd>`) ou dispositivo físico conectado via ADB (`adb devices`).
+   - Android SDK installed with build tools and plataform API 24+.
+   - Emulator Android running (`emulator -avd <avd_name>`) or physical device connected through ADB (`adb devices`).
 3. **App HF.Mobile**:
-   - Compilado e instalado no emulador: `com.companyname.hf.mobile`.
-4. **Servidor Appium ativo**:
+   - Built and installed at emulator: `com.remotecodehub.hf.mobile`.
+4. **Appium server active**:
+
    ```bash
    appium --port 4723
    ```
 
-### Variáveis de Ambiente
+### Environment Variables
+
 - `APPIUM_SERVER_URL`: URL do servidor Appium (padrão: `http://127.0.0.1:4723/`).
 
-### Como Executar
+### How to Run
+
 ```bash
 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Mobile"
 ```
-*Nota: Se o servidor Appium ou emulador não estiverem ativos, os testes utilizarão `Assert.Skip` indicando a ação necessária para inicialização do ambiente móvel.*
 
+*Note: If the Appium server or emulator is not active, the tests will use `Assert.Skip`, indicating the action required to initialize the mobile environment.*
