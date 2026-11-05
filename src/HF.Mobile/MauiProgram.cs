@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using HF.Shared.PageModels;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 
 namespace HF.Mobile;
@@ -22,6 +23,9 @@ public static class MauiProgram
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
 #endif
+
+		builder.Services.AddScoped<PageModelBase>();
+		builder.Services.AddScoped<HomePageModel>();
 
 		return builder.Build();
 	}
