@@ -75,6 +75,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\HF.Client\HF.Client.csproj" />
+      <ProjectReference Include="..\HF.Shared\HF.Shared.csproj" />
     </ItemGroup>
 
 </Project>
