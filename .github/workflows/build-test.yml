@@ -23,9 +23,9 @@ jobs:
 
       - name: Restore dependencies
         run: |
-          dotnet restore
-          dotnet tool restore
           dotnet workload restore
+          dotnet tool restore
+          dotnet restore
 
       - name: Build
         run: |
