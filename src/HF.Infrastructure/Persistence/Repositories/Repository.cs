@@ -20,7 +20,7 @@ public class Repository<TEntity> : IRepository<TEntity>
     private readonly ILogger logger;
 
  
-    protected Repository(HFDbContext context, ILogger logger, IUnitOfWork uow)
+    public Repository(HFDbContext context, ILogger logger, IUnitOfWork uow)
     {
         (Set, NoTrackingSet, this.logger, this.uow) =
         (context.Set<TEntity>(), context.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);

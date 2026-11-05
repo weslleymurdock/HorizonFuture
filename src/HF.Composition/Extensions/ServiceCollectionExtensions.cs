@@ -50,6 +50,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using HF.Application.Common.Utils;
 
 namespace HF.Composition.Extensions;
 
