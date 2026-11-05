@@ -25,6 +25,7 @@ public static class WebApplicationExtensions
             }
                         
             _ = app.UseHttpsRedirection();
+            _ = app.UseCors("AllowWebClient");
             _ = app.UseAuthentication();
             _ = app.UseAuthorization();
             _ = app.MapControllers();

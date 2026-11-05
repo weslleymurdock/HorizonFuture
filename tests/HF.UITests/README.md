@@ -42,32 +42,54 @@ dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Shar
 
 The `HF.Web` tests cover interactions with MudBlazor components within a web browser:
 
-- Login form validation and submission (with and without 2FA).
-- Validation of mismatched passwords and user registration.
-- Password recovery and reset flow using a code.
-- Email confirmation and resend functionality.
-- Administrative screens for managing roles, permissions, and user profiles/2FA.
+- Visible, non-headless login flow with gradual action pacing and high-contrast visual focus highlighting.
+- Audit of browser network traffic ensuring requests target the configured API endpoint (`POST /api/v1/auth/login`) with HTTP 200 response.
+- Verification of visible success notification without hardcoding or logging sensitive credentials or tokens.
+- Integration tests ensuring Kiota base URL resolution never defaults to the Web static host address.
 
 ### Prerequisites
 
-1. **Google Chrome / Chromium**: Must be installed in the environment (`google-chrome` or `chromium-browser`).
-2. **ChromeDriver**: A version compatible with the installed Chrome browser, present in the system PATH.
-3. **Web Server and API**:
+1. **Google Chrome / Chromium**: Installed on the host (`/usr/bin/google-chrome` or `/opt/google/chrome/google-chrome`).
+2. **Graphical Display**: An active X11 / Xwayland display (`DISPLAY=:0`).
+3. **ChromeDriver**: Automatically resolved via Selenium Manager or available in PATH.
+4. **Backend API (`HF.API`)**: Running and healthy via Docker Compose or local dotnet CLI:
+   - **Docker Compose (Recommended)**:
+     ```bash
+     docker compose up -d db hf
+     ```
+     Listens on `http://localhost:8080` (or `http://127.0.0.1:8080`).
+   - **Dotnet CLI**:
+     ```bash
+     dotnet run --project src/HF.API --no-launch-profile --urls "http://localhost:5267"
+     ```
+5. **Web Client (`HF.Web`)**: Running and serving Blazor WebAssembly static assets:
+   ```bash
+   dotnet run --project src/HF.Web --no-launch-profile --urls "http://localhost:5076"
+   ```
 
-- `HF.API` must be running (e.g., `http://localhost:5268`).
-- `HF.Web` must be running (e.g., `http://localhost:5000`).
+### Configuration & Environment Variables
 
-### Environment Variables
-
-- `HF_WEB_BASE_URL`: The base URL for the Blazor Web application (default: `http://localhost:5000`).
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `HF_WEB_BASE_URL` | Base URL of the Blazor WebAssembly application | `http://localhost:5076` |
+| `HF_API_BASE_URL` | Base URL of the backend REST API | `http://localhost:8080` |
+| `HF_TEST_ADMIN_EMAIL` | Synthetic test account email (seeded by `DatabaseSeedHostedService`) | `weslley@horizonfuture.local` (or `ADMIN_EMAIL`) |
+| `HF_TEST_ADMIN_PASSWORD` | Synthetic test account password | `p@55W0RD4dm1n` (or `ADMIN_PASSWORD`) |
+| `HF_UI_TEST_ACTION_DELAY_MS` | Delay between UI actions (navigation, focus, click) for human observation | `400` ms |
+| `HF_UI_TEST_TYPE_DELAY_MS` | Delay between characters typed into inputs | `40` ms |
+| `HF_UI_TEST_ENABLE_HIGHLIGHT` | Highlights focused elements with a high-contrast pink/magenta border | `true` |
 
 ### How to Run
 
-```bash
-dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~Web"
-```
+1. **Run the observable visual login test**:
+   ```bash
+   DISPLAY=:0 HF_WEB_BASE_URL=http://localhost:5076 HF_API_BASE_URL=http://localhost:8080 dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~LoginFlow_ValidatesInputs_AndSubmits_ObservableVisualBrowser" --logger "console;verbosity=normal"
+   ```
 
-*Note: If ChromeDriver is not detected in the environment, Selenium tests will use `Assert.Skip` to report the pending requirements, avoiding false build failures.*
+2. **Run all Web and Base URL configuration tests**:
+   ```bash
+   dotnet test tests/HF.UITests/HF.UITests.csproj --filter "FullyQualifiedName~WebClientBaseUrlConfigurationTests"
+   ```
 
 ---
 

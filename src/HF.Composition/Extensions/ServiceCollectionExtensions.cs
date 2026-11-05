@@ -58,10 +58,36 @@ public static class ServiceCollectionExtensions
 {
     extension (IServiceCollection services)
     {
-        public IServiceCollection AddPresentation(IHostEnvironment environment)
+        public IServiceCollection AddPresentation(IHostEnvironment environment, IConfiguration? configuration = null)
         {
             _ = services.AddControllers();
             _ = services.AddOpenApi();
+            _ = services.AddCors(options =>
+            {
+                var configuredOrigins = configuration?.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? configuration?["Cors:AllowedOrigins"]?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                var origins = configuredOrigins is { Length: > 0 }
+                    ? configuredOrigins
+                    : [
+                        "http://localhost:5076",
+                        "https://localhost:7094",
+                        "http://localhost:5000",
+                        "https://localhost:5001",
+                        "http://127.0.0.1:5076",
+                        "https://127.0.0.1:7094",
+                        "http://127.0.0.1:5000",
+                        "https://127.0.0.1:5001"
+                    ];
+
+                options.AddPolicy("AllowWebClient", policy =>
+                {
+                    policy.WithOrigins(origins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                });
+            });
             _ = services.AddExceptionHandler<GlobalExceptionHandler>();
             _ = services.AddProblemDetails(options =>
             {

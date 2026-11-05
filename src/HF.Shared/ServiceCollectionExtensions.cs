@@ -17,14 +17,14 @@ public static class ServiceCollectionExtensions
 {
     extension(IServiceCollection services)
     {
-        public IServiceCollection AddPageModels()
+        public IServiceCollection AddPageModels(string? customBaseUrl = null)
         {
             services.AddScoped<PageModelBase>();
             services.AddScoped<HomePageModel>();
             services.AddScoped<NotFoundPageModel>();
 
             // Kiota Client & Auth Services
-            services.AddHorizonClient();
+            services.AddHorizonClient(customBaseUrl);
 
             // Auth PageModels
             services.AddScoped<LoginPageModel>();
@@ -54,8 +54,8 @@ public static class ServiceCollectionExtensions
                 var baseUrl = customBaseUrl
                     ?? configuration?["Api:BaseUrl"]
                     ?? configuration?["ApiBaseUrl"]
-                    ?? httpClient.BaseAddress?.ToString()
-                    ?? "http://127.0.0.1:5268";
+                    ?? Environment.GetEnvironmentVariable("HF_API_BASE_URL")
+                    ?? "http://localhost:8080";
 
                 if (!string.IsNullOrWhiteSpace(baseUrl))
                 {

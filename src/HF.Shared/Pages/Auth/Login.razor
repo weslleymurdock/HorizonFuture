@@ -29,10 +29,11 @@
                 </MudAlert>
             }
 
-            <MudForm @onsubmit="() => PageModel.LoginAsync()">
+            <MudForm @onsubmit="SubmitAsync">
                 <MudTextField T="string"
                               Label="Email"
                               @bind-Value="PageModel.Email"
+                              Immediate="true"
                               InputType="InputType.Email"
                               Required="true"
                               RequiredError="O email é obrigatório"
@@ -46,6 +47,7 @@
                 <MudTextField T="string"
                               Label="Senha"
                               @bind-Value="PageModel.Password"
+                              Immediate="true"
                               InputType="InputType.Password"
                               Required="true"
                               RequiredError="A senha é obrigatória"
@@ -86,8 +88,9 @@
                            Color="Color.Primary"
                            FullWidth="true"
                            Size="Size.Large"
-                           Class="mt-2"
-                           OnClick="() => PageModel.LoginAsync()"
+                           Class="mt-2 login-submit-btn"
+                           ButtonType="ButtonType.Submit"
+                           OnClick="SubmitAsync"
                            Disabled="@PageModel.IsBusy">
                     @if (PageModel.IsBusy)
                     {
@@ -113,4 +116,17 @@
         </MudCardActions>
     </MudCard>
 </MudContainer>
+
+@code {
+    protected override void OnInitialized()
+    {
+        PageModel.PropertyChanged += (_, _) => InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SubmitAsync()
+    {
+        await PageModel.LoginAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+}
 

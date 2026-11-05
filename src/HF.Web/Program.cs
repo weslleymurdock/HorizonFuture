@@ -11,5 +11,6 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-builder.Services.AddPageModels();
+var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.Configuration["ApiBaseUrl"];
+builder.Services.AddPageModels(apiBaseUrl);
 await builder.Build().RunAsync();

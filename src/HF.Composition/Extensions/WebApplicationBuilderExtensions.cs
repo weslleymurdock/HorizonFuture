@@ -15,7 +15,7 @@ public static class WebApplicationBuilderExtensions
         public WebApplicationBuilder BuildHF(IHostEnvironment environment)
         {
             _ = builder.AddLogging();
-            _ = builder.Services.AddPresentation(environment);
+            _ = builder.Services.AddPresentation(environment, builder.Configuration);
             _ = builder.Services.AddApplication(); 
             _ = builder.Services.AddInfrastructure(builder.Configuration);
             return builder;
