@@ -10,6 +10,6 @@
     <Project Path="src/HF.Web/HF.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/HF.Application.Tests/HF.Application.Tests.csproj" />
+    <Project Path="tests/HF.UnitTests/HF.UnitTests.csproj" />
   </Folder>
 </Solution>

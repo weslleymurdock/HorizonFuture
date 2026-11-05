@@ -7,6 +7,7 @@ namespace HF.Infrastructure.Persistence.Repositories;
 /// Coordinates EF Core persistence transactions.
 /// </summary>
 public class UnitOfWork(HFDbContext context) : IUnitOfWork,
+    IDisposable,
     IAsyncDisposable
 {
 
@@ -60,6 +61,28 @@ public class UnitOfWork(HFDbContext context) : IUnitOfWork,
         await DisposeTransactionAsync();
     }
 
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (transaction is null)
+        {
+            return;
+        }
+
+        try
+        {
+            transaction.Rollback();
+        }
+        catch
+        {
+            // Suppress exception on cleanup
+        }
+        finally
+        {
+            transaction.Dispose();
+            transaction = null;
+        }
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
@@ -69,8 +92,18 @@ public class UnitOfWork(HFDbContext context) : IUnitOfWork,
             return;
         }
 
-        await transaction.RollbackAsync();
-        await DisposeTransactionAsync();
+        try
+        {
+            await transaction.RollbackAsync();
+        }
+        catch
+        {
+            // Suppress exception on cleanup
+        }
+        finally
+        {
+            await DisposeTransactionAsync();
+        }
     }
 
     private async ValueTask DisposeTransactionAsync()

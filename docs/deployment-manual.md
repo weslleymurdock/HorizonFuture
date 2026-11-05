@@ -51,7 +51,7 @@ Repeat this sequence for each NGO, and keep development, staging, and production
 ### 3. Create Infisical secret/configuration environments
 
 1. Create an Infisical account/workspace and a project for the NGO installation. Add separate `dev`, `staging`, and `prod` environments.
-2. Create distinct secret values in each environment. At minimum, plan for `ConnectionStrings__Default`, auth/signing and token-validation settings once implemented, and any external integration credentials. The MAUI API base URL is configuration, not a secret.
+2. Create distinct secret values in each environment. At minimum, plan for `ConnectionStrings__PostgresConnection` (or fallback `ConnectionStrings__DefaultConnection`), auth/signing and token-validation settings once implemented, and any external integration credentials. The MAUI API base URL is configuration, not a secret.
 3. Give each Render environment only access to the matching Infisical environment, using a scoped machine identity/service token. Do not reuse a production token in development or across NGOs.
 4. Configure Render environment variables or the implemented secret-fetch mechanism using Infisical's documented integration. Ensure secrets are masked and excluded from deploy logs. Rotate credentials when operators change or access is suspected.
 5. Document ownership and recovery contact for the Infisical project. Never commit `.env` files containing real values.

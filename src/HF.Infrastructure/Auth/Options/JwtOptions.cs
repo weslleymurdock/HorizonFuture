@@ -7,13 +7,13 @@ public sealed class JwtOptions
     public const string SectionName = "Jwt";
 
     /// <summary>Gets or sets the secret key used to sign JWTs.</summary>
-    public string Key { get; set; } = "MemoAna-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
+    public string Key { get; set; } = "HorizonFuture-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
 
     /// <summary>Gets or sets the JWT issuer.</summary>
-    public string Issuer { get; set; } = "MemoAna";
+    public string Issuer { get; set; } = "HorizonFuture";
 
     /// <summary>Gets or sets the JWT audience.</summary>
-    public string Audience { get; set; } = "MemoAna";
+    public string Audience { get; set; } = "HorizonFuture";
 
     /// <summary>Gets or sets the lifetime of an access token.</summary>
     public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(15);

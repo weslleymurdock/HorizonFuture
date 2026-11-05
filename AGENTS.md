@@ -5,7 +5,7 @@
 - Early .NET 10 solution under `src/`: `HF.API`, `HF.Application`, `HF.Composition`, `HF.Domain`, `HF.Infrastructure`, `HF.Mobile`, and `HF.Web`.
 - `HF.Mobile` is a MAUI Blazor Hybrid template targeting Android and, on supported build hosts, iOS, MacCatalyst, and Windows. It currently has no MudBlazor package, product workflow, local persistence, or API integration.
 - `HF.Web` is a Blazor WebAssembly template targeting `net10.0` with MudBlazor `9.*`. Its weather sample reads bundled JSON; it is not integrated with the REST API.
-- `HF.API` still has the generated weather sample. Production domain, authentication, persistence, and sync are not implemented.
+- `HF.API` contains domain controllers, authentication, and EF Core PostgreSQL persistence. Client REST integration and sync protocol are not implemented.
 - Read scoped guidance in `src/AGENTS.md` and `docs/AGENTS.md`. Antigravity skills are in `.agents/skills/`; workspace MCP configuration is `.agents/mcp_config.json`.
 - Keep these baseline facts current. Treat roadmap statements as plans, not evidence of implementation.
 

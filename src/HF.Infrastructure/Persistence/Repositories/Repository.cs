@@ -17,10 +17,10 @@ public class Repository<TEntity> : IRepository<TEntity>
     private readonly DbSet<TEntity> Set;
     private readonly IQueryable<TEntity> NoTrackingSet;
     private readonly IUnitOfWork uow;
-    private readonly ILogger logger;
+    private readonly ILogger<Repository<TEntity>> logger;
 
  
-    public Repository(HFDbContext context, ILogger logger, IUnitOfWork uow)
+    public Repository(HFDbContext context, ILogger<Repository<TEntity>> logger, IUnitOfWork uow)
     {
         (Set, NoTrackingSet, this.logger, this.uow) =
         (context.Set<TEntity>(), context.Set<TEntity>().AsNoTracking<TEntity>(), logger, uow);

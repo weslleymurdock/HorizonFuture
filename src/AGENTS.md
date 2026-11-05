@@ -6,7 +6,7 @@ These instructions apply to `src/`. Read root `AGENTS.md` first.
 
 - `HF.Mobile` is a MAUI Blazor Hybrid template. It hosts Razor components in `BlazorWebView`; targets are conditional by host OS in its project file. It has no MudBlazor package, API client, SQLite store, auth, or product workflows yet.
 - `HF.Web` is a Blazor WebAssembly template targeting .NET 10 with MudBlazor `9.*`. Its weather page reads bundled sample JSON. MudBlazor services are registered and providers are placed in the main layout; inspect CSS and assets before changing them.
-- `HF.API` still contains a generated weather sample. Neither UI currently consumes its REST endpoints. Do not invent routes or claim integration exists.
+- `HF.API` contains domain controllers, authentication, and EF Core PostgreSQL persistence. Neither UI currently consumes its REST endpoints. Do not invent routes or claim integration exists.
 - Read focused skills under `.agents/skills/`. Query the configured `mudblazor` MCP for MudBlazor component APIs and examples; match its version to the version NuGet actually resolved.
 
 ## Project boundaries

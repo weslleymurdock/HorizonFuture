@@ -87,9 +87,18 @@ public static class ServiceCollectionExtensions
 
         public IServiceCollection AddDatabase(IConfiguration configuration)
         {
+            var rawConnectionString = configuration.GetConnectionString("PostgresConnection")
+                ?? configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrWhiteSpace(rawConnectionString))
+            {
+                throw new InvalidOperationException(
+                    "The PostgreSQL connection string is not configured. " +
+                    "Set the environment variable 'ConnectionStrings__PostgresConnection' or configure 'ConnectionStrings:PostgresConnection' in appsettings.json.");
+            }
+
             _ = services.AddDbContext<HFDbContext>(options =>
             {
-                var rawConnectionString = configuration.GetConnectionString("PostgresConnection");
                 var connectionString = NormalizeNpgsqlConnectionString(rawConnectionString);
                 options.UseNpgsql(connectionString, 
                 builder => 
@@ -149,15 +158,34 @@ public static class ServiceCollectionExtensions
 
         public IServiceCollection AddAuth(IConfiguration configuration)
         {
-               // Configure options sections
+            // Configure options sections
             _ = services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
-
 
             // Authentication and JWT Bearer configuration
             var jwtSection = configuration.GetSection(JwtOptions.SectionName);
-            var jwtKey = jwtSection["Key"] ?? "Horizon-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
-            var jwtIssuer = jwtSection["Issuer"] ?? "Horizon";
-            var jwtAudience = jwtSection["Audience"] ?? "Horizon";
+            var jwtKey = jwtSection["Key"];
+            var jwtIssuer = jwtSection["Issuer"];
+            var jwtAudience = jwtSection["Audience"];
+
+            if (string.IsNullOrWhiteSpace(jwtKey))
+            {
+                jwtKey = "HorizonFuture-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456";
+            }
+            else if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "A chave JWT ('Jwt:Key') deve conter no mínimo 32 caracteres (256 bits).");
+            }
+
+            if (string.IsNullOrWhiteSpace(jwtIssuer))
+            {
+                jwtIssuer = "HorizonFuture";
+            }
+
+            if (string.IsNullOrWhiteSpace(jwtAudience))
+            {
+                jwtAudience = "HorizonFuture";
+            }
 
             _ = services.AddAuthentication(options =>
             {

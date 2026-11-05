@@ -12,25 +12,27 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neon -d neondb"]
-      interval: 5m
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
-      retries: 3
-      start_period: 30s # Bootstrap duration, for this duration failures does not count towards max retries.
-      start_interval: 5s # How long after the health check has started to run the healthcheck again.
+      retries: 5
+      start_period: 10s
     networks:
       - hfnet
-
 
   hf:
     image: ${DOCKER_REGISTRY-}hf
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__PostgresConnection=${ConnectionStrings__DefaultConnection}
+      - ConnectionStrings__PostgresConnection=${ConnectionStrings__PostgresConnection:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@horizonfuture.org}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin1234!}
+      - Jwt__Key=${Jwt__Key:-HorizonFuture-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456}
+      - Jwt__Issuer=${Jwt__Issuer:-HorizonFuture}
+      - Jwt__Audience=${Jwt__Audience:-HorizonFuture}
     volumes:
       - hf_logs:/app/logs
       - hf_data:/app/data
@@ -38,17 +40,16 @@ services:
       context: .
       dockerfile: src/HF.API/Dockerfile
       args:
-        - BUILD_CONFIGURATION=Debug 
+        - BUILD_CONFIGURATION=Debug
     depends_on:
       db:
         condition: service_healthy
     restart: always
     ports:
       - "8080:8080"
-      - "8443:8443"
     networks:
       - hfnet
-    
+
 volumes:
   hf_logs:
     driver: local
@@ -56,6 +57,7 @@ volumes:
     driver: local
   hf_data:
     driver: local
+
 networks:
   hfnet:
     driver: bridge
