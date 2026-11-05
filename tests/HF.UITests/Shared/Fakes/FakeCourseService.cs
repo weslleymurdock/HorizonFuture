@@ -9,7 +9,7 @@ using HF.Shared.Courses.Models;
 namespace HF.UITests.Shared.Fakes;
 
 /// <summary>
-/// Implementação fake de ICourseService para testes de unidade dos PageModels de Cursos.
+/// Fake implementation of ICourseService for Courses PageModel unit tests.
 /// </summary>
 public class FakeCourseService : ICourseService
 {

@@ -1,0 +1,291 @@
+@page "/subjects"
+@inject SubjectListPageModel PageModel
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-8">
+    <div class="d-flex flex-wrap justify-space-between align-center gap-4 mb-6">
+        <div>
+            <MudText Typo="Typo.h4" GutterBottom="true">Disciplinas</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Gerenciamento de matérias e componentes curriculares dos cursos e unidades escolares.
+            </MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/subjects/create"))"
+                   aria-label="Cadastrar Nova Disciplina">
+            Nova Disciplina
+        </MudButton>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+            @PageModel.ErrorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.SuccessMessage = null">
+            @PageModel.SuccessMessage
+        </MudAlert>
+    }
+
+    @if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Outlined">
+            Acesso negado: seu perfil não possui a permissão necessária para visualizar a lista de disciplinas (Subjects.Read).
+        </MudAlert>
+    }
+
+    @if (PageModel.IsUnauthorized)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Outlined">
+            Sua sessão expirou ou você não está autenticado. Faça login para acessar esta funcionalidade.
+        </MudAlert>
+    }
+
+    <!-- Barra de Filtros e Busca -->
+    <MudCard Elevation="2" Class="pa-4 mb-6">
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField T="string"
+                              Label="Buscar por nome ou código"
+                              @bind-Value="PageModel.SearchText"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              Clearable="true"
+                              aria-label="Filtrar disciplinas por nome ou código" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="SubjectStatus?"
+                           Label="Status Operacional"
+                           @bind-Value="PageModel.StatusFilter"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Clearable="true"
+                           aria-label="Filtrar disciplinas por status">
+                    <MudSelectItem T="SubjectStatus?" Value="@((SubjectStatus?)null)">Todos os Status</MudSelectItem>
+                    <MudSelectItem T="SubjectStatus?" Value="@((SubjectStatus?)SubjectStatus.Active)">Ativo</MudSelectItem>
+                    <MudSelectItem T="SubjectStatus?" Value="@((SubjectStatus?)SubjectStatus.Inactive)">Inativo</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField T="string"
+                              Label="Curso (CourseId)"
+                              @bind-Value="PageModel.CourseIdFilter"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              HelperText="Filtro opcional por ID do curso"
+                              aria-label="Filtrar disciplinas por ID do Curso" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2">
+                <MudTextField T="string"
+                              Label="Unidade Escolar (SchoolUnitId)"
+                              @bind-Value="PageModel.SchoolUnitIdFilter"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              HelperText="Filtro opcional por ID de unidade"
+                              aria-label="Filtrar disciplinas por ID da Unidade Escolar" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="2" Class="d-flex gap-2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           OnClick="() => PageModel.LoadSubjectsAsync()"
+                           Disabled="@PageModel.IsBusy"
+                           aria-label="Aplicar filtros de disciplinas">
+                    @if (PageModel.IsBusy)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                        <span>Carregando...</span>
+                    }
+                    else
+                    {
+                        <span>Filtrar</span>
+                    }
+                </MudButton>
+
+                <MudTooltip Text="Limpar Filtros">
+                    <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   OnClick="() => PageModel.ResetFiltersAsync()"
+                                   Disabled="@PageModel.IsBusy"
+                                   aria-label="Limpar todos os filtros" />
+                </MudTooltip>
+            </MudItem>
+        </MudGrid>
+    </MudCard>
+
+    <!-- Tabela de Disciplinas -->
+    <MudTable Items="PageModel.FilteredSubjects"
+              Dense="true"
+              Hover="true"
+              Striped="true"
+              Elevation="3"
+              Loading="@PageModel.IsBusy"
+              Class="mb-4">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortBy="new Func<SubjectItemDto, object>(x => x.Code)">Código</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<SubjectItemDto, object>(x => x.Name)">Nome da Disciplina</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<SubjectItemDto, object>(x => x.WorkloadHours)">Carga Horária</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortBy="new Func<SubjectItemDto, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+            <MudTh>Curso Vinculado</MudTh>
+            <MudTh>Unidade</MudTh>
+            <MudTh Style="text-align: right;">Ações</MudTh>
+        </HeaderContent>
+
+        <RowTemplate>
+            <MudTd DataLabel="Código">
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                    @context.Code
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Nome da Disciplina">
+                <MudText Typo="Typo.subtitle2" Class="font-weight-bold">@context.Name</MudText>
+                @if (!string.IsNullOrWhiteSpace(context.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate" Style="max-width: 300px; display: block;">
+                        @context.Description
+                    </MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Carga Horária">
+                @context.WorkloadHours h
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Status)" Variant="Variant.Filled">
+                    @GetStatusLabel(context.Status)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Curso Vinculado">
+                @(string.IsNullOrWhiteSpace(context.CourseId) ? "Geral (Sem Curso)" : context.CourseId)
+            </MudTd>
+            <MudTd DataLabel="Unidade">
+                @(string.IsNullOrWhiteSpace(context.SchoolUnitId) ? "Todas as Unidades" : context.SchoolUnitId)
+            </MudTd>
+            <MudTd DataLabel="Ações" Style="text-align: right;">
+                <div class="d-flex justify-end gap-1">
+                    <MudTooltip Text="Visualizar detalhes">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Size="Size.Small"
+                                       Color="Color.Info"
+                                       aria-label="@($"Visualizar detalhes da disciplina {context.Name}")"
+                                       OnClick="@(() => Navigation.NavigateTo($"/subjects/{context.Id}"))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Editar disciplina">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       aria-label="@($"Editar disciplina {context.Name}")"
+                                       OnClick="@(() => Navigation.NavigateTo($"/subjects/{context.Id}/edit"))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Excluir disciplina">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Disabled="@(PageModel.IsDeleting && PageModel.DeletingSubjectId == context.Id)"
+                                       aria-label="@($"Excluir disciplina {context.Name}")"
+                                       OnClick="@(() => ConfirmDeleteAsync(context))" />
+                    </MudTooltip>
+                </div>
+            </MudTd>
+        </RowTemplate>
+
+        <NoRecordsContent>
+            <div class="pa-8 text-center">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+                <MudText Typo="Typo.h6" Color="Color.Secondary" GutterBottom="true">
+                    Nenhuma disciplina encontrada
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                    Não há disciplinas cadastradas com os critérios informados.
+                </MudText>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => Navigation.NavigateTo("/subjects/create"))">
+                    Cadastrar Primeira Disciplina
+                </MudButton>
+            </div>
+        </NoRecordsContent>
+
+        <LoadingContent>
+            <div class="pa-8 text-center">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" Class="mb-2" />
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Carregando catálogo de disciplinas...</MudText>
+            </div>
+        </LoadingContent>
+
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }"
+                           RowsPerPageString="Linhas por página:"
+                           InfoFormat="{first_item}-{last_item} de {all_items}" />
+        </PagerContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        await PageModel.LoadSubjectsAsync();
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task ConfirmDeleteAsync(SubjectItemDto subject)
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão",
+            $"Deseja realmente excluir a disciplina '{subject.Name}' (Código: {subject.Code})? Esta operação é irreversível.",
+            yesText: "Excluir Disciplina",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            await PageModel.DeleteSubjectAsync(subject.Id);
+        }
+    }
+
+    private static Color GetStatusColor(SubjectStatus status) => status switch
+    {
+        SubjectStatus.Active => Color.Success,
+        SubjectStatus.Inactive => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(SubjectStatus status) => status switch
+    {
+        SubjectStatus.Active => "Ativo",
+        SubjectStatus.Inactive => "Inativo",
+        _ => status.ToString()
+    };
+}
+

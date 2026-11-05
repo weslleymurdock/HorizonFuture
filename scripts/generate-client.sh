@@ -19,7 +19,7 @@ GENERATED_DIR="${CLIENT_DIR}/Generated"
 CLIENT_NAME="${KIOTA_CLIENT_NAME:-ApiClient}"
 CLIENT_NAMESPACE="${KIOTA_CLIENT_NAMESPACE:-HF.Client}"
 API_PORT="${API_PORT:-8080}"
-OPENAPI_URL="http://127.0.0.1:${API_PORT}/openapi/v1.json"
+OPENAPI_URL="https://horizon.gdhub.xyz/openapi/v1.json"
 
 mkdir -p "$OPENAPI_DIR"
 mkdir -p "$GENERATED_DIR"
@@ -33,7 +33,7 @@ export ConnectionStrings__PostgresConnection="${ConnectionStrings__PostgresConne
 export Jwt__Key="${Jwt__Key:-HorizonFuture-Development-Secret-Key-Must-Be-At-Least-32-Bytes-Long-123456}"
 
 # Start API in background and capture PID
-dotnet run --project "$API_DIR" --no-launch-profile --urls "http://127.0.0.1:${API_PORT}" > /dev/null 2>&1 &
+dotnet run --project "$API_DIR" --no-launch-profile --urls "http://horizon.gdhub.xyz" > /dev/null 2>&1 &
 API_PID=$!
 
 cleanup() {

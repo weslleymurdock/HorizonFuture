@@ -51,6 +51,14 @@ services:
     networks:
       - hfnet
 
+  tunel:
+    image: cloudflare/cloudflared:latest 
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run
+
 volumes:
   hf_logs:
     driver: local

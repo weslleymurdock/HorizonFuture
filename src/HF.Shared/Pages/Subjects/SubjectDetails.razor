@@ -1,0 +1,267 @@
+@page "/subjects/{Id}"
+@inject SubjectDetailsPageModel PageModel
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>@PageModel.Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6 mb-8">
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               Color="Color.Default"
+               Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/subjects"))"
+               aria-label="Voltar para a lista de disciplinas">
+        Voltar para Disciplinas
+    </MudButton>
+
+    @if (PageModel.IsBusy)
+    {
+        <div class="pa-12 text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary">Carregando detalhes da disciplina...</MudText>
+        </div>
+    }
+    else if (PageModel.IsNotFound)
+    {
+        <MudCard Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Disciplina Não Encontrada</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                A disciplina com identificador '@Id' não foi localizada ou pode ter sido removida.
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.List"
+                       OnClick="@(() => Navigation.NavigateTo("/subjects"))">
+                Ver Catálogo de Disciplinas
+            </MudButton>
+        </MudCard>
+    }
+    else if (PageModel.IsForbidden)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled">
+            Acesso negado: você não tem permissão para visualizar esta disciplina (Subjects.Read).
+        </MudAlert>
+    }
+    else if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage) && PageModel.Subject is null)
+    {
+        <MudCard Elevation="3" Class="pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" Class="mb-3" />
+            <MudText Typo="Typo.h5" GutterBottom="true">Não Foi Possível Carregar a Disciplina</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
+                @PageModel.ErrorMessage
+            </MudText>
+            <div class="d-flex justify-center gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@(() => PageModel.LoadSubjectAsync(Id))">
+                    Tentar Novamente
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.List"
+                           OnClick="@(() => Navigation.NavigateTo("/subjects"))">
+                    Ver Catálogo de Disciplinas
+                </MudButton>
+            </div>
+        </MudCard>
+    }
+    else if (PageModel.Subject is not null)
+    {
+        var subject = PageModel.Subject;
+
+        @if (!string.IsNullOrWhiteSpace(PageModel.ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" Variant="Variant.Filled" CloseIconClicked="() => PageModel.ErrorMessage = null">
+                @PageModel.ErrorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(PageModel.SuccessMessage))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4" Variant="Variant.Filled">
+                @PageModel.SuccessMessage
+            </MudAlert>
+        }
+
+        <MudCard Elevation="4" Class="pa-6">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <div class="d-flex flex-wrap align-center justify-space-between gap-2">
+                        <div>
+                            <div class="d-flex align-center gap-2 mb-1">
+                                <MudChip T="string" Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                                    @subject.Code
+                                </MudChip>
+                                <MudChip T="string" Color="@GetStatusColor(subject.Status)" Variant="Variant.Filled" Size="Size.Small">
+                                    @GetStatusLabel(subject.Status)
+                                </MudChip>
+                            </div>
+                            <MudText Typo="Typo.h4">@subject.Name</MudText>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => Navigation.NavigateTo($"/subjects/{subject.Id}/edit"))"
+                                       aria-label="Editar esta disciplina">
+                                Editar
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Delete"
+                                       Disabled="@PageModel.IsDeleting"
+                                       OnClick="ConfirmDeleteAsync"
+                                       aria-label="Excluir esta disciplina">
+                                @if (PageModel.IsDeleting)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1" />
+                                    <span>Excluindo...</span>
+                                }
+                                else
+                                {
+                                    <span>Excluir</span>
+                                }
+                            </MudButton>
+                        </div>
+                    </div>
+                </CardHeaderContent>
+            </MudCardHeader>
+
+            <MudCardContent>
+                <MudDivider Class="my-4" />
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Carga Horária</MudText>
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">@subject.WorkloadHours horas</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Curso Vinculado</MudText>
+                        @if (!string.IsNullOrWhiteSpace(subject.CourseId))
+                        {
+                            <MudLink Href="@($"/courses/{subject.CourseId}")" Typo="Typo.body1" Class="font-weight-medium">
+                                @subject.CourseId
+                            </MudLink>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body1" Class="font-weight-medium">Componente Geral (Sem Curso Fixo)</MudText>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Unidade Escolar Vinculada</MudText>
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">
+                            @(string.IsNullOrWhiteSpace(subject.SchoolUnitId) ? "Todas as Unidades (Geral)" : subject.SchoolUnitId)
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Descrição / Ementa Pedagógica</MudText>
+                        <MudText Typo="Typo.body1" Class="mt-1" Style="white-space: pre-line;">
+                            @(string.IsNullOrWhiteSpace(subject.Description) ? "Nenhuma descrição detalhada informada." : subject.Description)
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider Class="my-6" />
+
+                <!-- Seção de Auditoria e Metadados -->
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" GutterBottom="true">Auditoria e Metadados</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">ID do Registro</MudText>
+                        <MudText Typo="Typo.caption" Class="d-block font-weight-medium text-truncate">@subject.Id</MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Criado Por</MudText>
+                        <MudText Typo="Typo.caption" Class="d-block font-weight-medium">
+                            @(string.IsNullOrWhiteSpace(subject.CreatedBy) ? "-" : subject.CreatedBy)
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Criação</MudText>
+                        <MudText Typo="Typo.caption" Class="d-block font-weight-medium">
+                            @(subject.CreatedAt.HasValue ? subject.CreatedAt.Value.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : "-")
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Última Modificação</MudText>
+                        <MudText Typo="Typo.caption" Class="d-block font-weight-medium">
+                            @(subject.UpdatedAt.HasValue ? subject.UpdatedAt.Value.LocalDateTime.ToString("dd/MM/yyyy HH:mm") : "Sem alterações")
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        PageModel.PropertyChanged += HandlePropertyChanged;
+        if (!string.IsNullOrWhiteSpace(Id))
+        {
+            await PageModel.LoadSubjectAsync(Id);
+        }
+    }
+
+    private void HandlePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        PageModel.PropertyChanged -= HandlePropertyChanged;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (PageModel.Subject is null) return;
+
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Exclusão de Disciplina",
+            $"Deseja realmente excluir permanentemente a disciplina '{PageModel.Subject.Name}' ({PageModel.Subject.Code})?",
+            yesText: "Sim, Excluir",
+            cancelText: "Cancelar");
+
+        if (confirm == true)
+        {
+            var success = await PageModel.DeleteSubjectAsync();
+            if (success)
+            {
+                Navigation.NavigateTo("/subjects");
+            }
+        }
+    }
+
+    private static Color GetStatusColor(SubjectStatus status) => status switch
+    {
+        SubjectStatus.Active => Color.Success,
+        SubjectStatus.Inactive => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static string GetStatusLabel(SubjectStatus status) => status switch
+    {
+        SubjectStatus.Active => "Ativo",
+        SubjectStatus.Inactive => "Inativo",
+        _ => status.ToString()
+    };
+}
+

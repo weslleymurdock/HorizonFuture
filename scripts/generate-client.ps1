@@ -15,7 +15,7 @@ $clientDir = Join-Path $repoRoot "src/HF.Client"
 $openApiDir = Join-Path $clientDir "OpenApi"
 $specFile = Join-Path $openApiDir "openapi.json"
 $generatedDir = Join-Path $clientDir "Generated"
-$openApiUrl = "http://127.0.0.1:$ApiPort/openapi/v1.json"
+$openApiUrl = "https://horizon.gdhub.xyz/openapi/v1.json"
 
 if (-not (Test-Path $openApiDir)) {
     New-Item -ItemType Directory -Path $openApiDir -Force | Out-Null
@@ -38,7 +38,7 @@ if (-not $env:Jwt__Key) {
 
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = "dotnet"
-$psi.Arguments = "run --project `"$apiDir`" --no-launch-profile --urls http://127.0.0.1:$ApiPort"
+$psi.Arguments = "run --project `"$apiDir`" --no-launch-profile --urls https://horizon.gdhub.xyz"
 $psi.UseShellExecute = $false
 $psi.CreateNoWindow = $true
 

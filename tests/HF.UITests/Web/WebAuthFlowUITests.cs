@@ -12,8 +12,8 @@ using Xunit.Abstractions;
 namespace HF.UITests.Web;
 
 /// <summary>
-/// Testes de automação de UI para Blazor WebAssembly (HF.Web) utilizando Selenium WebDriver.
-/// Executado em modo visual (não headless) com ritmo gradual e destaque visual dos elementos.
+/// Web UI automation tests for Blazor WebAssembly (HF.Web) covering Authentication flows using Selenium WebDriver.
+/// Executes observable browser interactions with real inputs, gradual human typing, and visual verification.
 /// </summary>
 public class WebAuthFlowUITests
 {
@@ -40,27 +40,29 @@ public class WebAuthFlowUITests
 
         _actionDelayMs = int.TryParse(Environment.GetEnvironmentVariable("HF_UI_TEST_ACTION_DELAY_MS"), out var actionDelay)
             ? actionDelay
-            : 400;
+            : 200;
 
         _typeDelayMs = int.TryParse(Environment.GetEnvironmentVariable("HF_UI_TEST_TYPE_DELAY_MS"), out var typeDelay)
             ? typeDelay
-            : 40;
+            : 20;
 
         _highlightEnabled = !bool.TryParse(Environment.GetEnvironmentVariable("HF_UI_TEST_ENABLE_HIGHLIGHT"), out var highlight) || highlight;
     }
 
     private IWebDriver CreateWebDriver()
     {
-        // Garante DISPLAY para execução gráfica se estiver em ambiente Linux com X11/Xwayland
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")))
         {
             Environment.SetEnvironmentVariable("DISPLAY", ":0");
         }
 
         var options = new ChromeOptions();
-
-        // MODO VISUAL: NÃO adicionar --headless
         options.AddArguments("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--window-size=1280,850");
+
+        if (string.Equals(Environment.GetEnvironmentVariable("HF_UI_TEST_HEADLESS"), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            options.AddArgument("--headless=new");
+        }
 
         if (File.Exists("/opt/google/chrome/google-chrome"))
         {
@@ -71,7 +73,6 @@ public class WebAuthFlowUITests
             options.BinaryLocation = "/usr/bin/google-chrome";
         }
 
-        // Habilita captura de eventos de rede para auditoria do tráfego sem expor credenciais
         options.SetLoggingPreference(LogType.Performance, LogLevel.All);
 
         try
@@ -81,26 +82,23 @@ public class WebAuthFlowUITests
         catch (Exception ex)
         {
             throw new InvalidOperationException(
-                $"Falha ao inicializar o Google Chrome / ChromeDriver em modo visual. " +
-                $"Certifique-se de que o Google Chrome está instalado e que um display gráfico (como DISPLAY=:0) está disponível. " +
-                $"Detalhes: {ex.Message}", ex);
+                $"Failed to initialize Google Chrome / ChromeDriver. Details: {ex.Message}", ex);
         }
     }
 
-    [Fact(Skip = "Requer Google Chrome instalado e display gráfico ativo (DISPLAY=:0)")]
+    [Fact]
     public void LoginFlow_ValidatesInputs_AndSubmits_ObservableVisualBrowser()
     {
         _output.WriteLine($"[TEST SETUP] Web URL: {_webBaseUrl} | API URL: {_apiBaseUrl}");
         _output.WriteLine($"[TEST SETUP] Action Delay: {_actionDelayMs}ms | Type Delay: {_typeDelayMs}ms | Highlight: {_highlightEnabled}");
 
         using var driver = CreateWebDriver();
-        var js = (IJavaScriptExecutor)driver;
 
         try
         {
-            // 1. Navegação para a tela de login
+            // 1. Navigate to login page
             var loginUrl = $"{_webBaseUrl}/auth/login";
-            _output.WriteLine($"[UI ACTION] Navegando para {loginUrl}...");
+            _output.WriteLine($"[UI ACTION] Navigating to {loginUrl}...");
             driver.Navigate().GoToUrl(loginUrl);
 
             var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
@@ -108,23 +106,23 @@ public class WebAuthFlowUITests
             {
                 var el = d.FindElement(By.CssSelector("input[type='email']"));
                 return (el.Displayed && el.Enabled) ? el : null;
-            }) ?? throw new NoSuchElementException("Campo de email não encontrado ou não habilitado.");
+            }) ?? throw new NoSuchElementException("Email field not found or not enabled.");
 
             var passwordInput = driver.FindElement(By.CssSelector("input[type='password']"));
 
             Assert.NotNull(emailInput);
             Assert.NotNull(passwordInput);
 
-            // 2. Preenchimento gradual e visual do campo de email
-            _output.WriteLine("[UI ACTION] Focando e preenchendo campo de Email...");
+            // 2. Fill email field
+            _output.WriteLine("[UI ACTION] Focusing and populating Email field...");
             HumanType(driver, emailInput, _adminEmail);
 
-            // 3. Preenchimento gradual e visual do campo de senha (sem logar a senha)
-            _output.WriteLine("[UI ACTION] Focando e preenchendo campo de Senha...");
+            // 3. Fill password field (without logging password)
+            _output.WriteLine("[UI ACTION] Focusing and populating Password field...");
             HumanType(driver, passwordInput, _adminPassword);
 
-            // 4. Localiza o botão ativo no DOM após renderização e clica
-            _output.WriteLine("[UI ACTION] Localizando botão Entrar ativo no DOM...");
+            // 4. Locate submit button and click
+            _output.WriteLine("[UI ACTION] Locating active submit button in DOM...");
             var submitButton = wait.Until(d =>
             {
                 var buttons = d.FindElements(By.CssSelector("button"));
@@ -136,16 +134,15 @@ public class WebAuthFlowUITests
                     }
                 }
                 return null;
-            }) ?? throw new NoSuchElementException("Botão de login não encontrado ou não habilitado.");
+            }) ?? throw new NoSuchElementException("Login button not found or not enabled.");
 
-            _output.WriteLine("[UI ACTION] Destacando e clicando no botão Entrar...");
+            _output.WriteLine("[UI ACTION] Highlighting and clicking submit button...");
             HumanClick(driver, submitButton);
 
-            // 5. Espera explícita pelo resultado visível na UI
-            _output.WriteLine("[UI WAIT] Aguardando conclusão da autenticação na interface...");
+            // 5. Explicit wait for visible result in UI
+            _output.WriteLine("[UI WAIT] Waiting for authentication result in interface...");
             var resultFound = wait.Until(d =>
             {
-                // Verifica sucesso visível na UI
                 var successAlerts = d.FindElements(By.CssSelector(".mud-alert-filled-success, .mud-alert"));
                 foreach (var alert in successAlerts)
                 {
@@ -155,23 +152,22 @@ public class WebAuthFlowUITests
                     }
                 }
 
-                // Verifica erro visível na UI
                 var errorAlerts = d.FindElements(By.CssSelector(".mud-alert-filled-error, .mud-alert-message"));
                 foreach (var alert in errorAlerts)
                 {
                     if (alert.Displayed && !string.IsNullOrWhiteSpace(alert.Text))
                     {
-                        throw new InvalidOperationException($"Erro de autenticação exibido na UI: {alert.Text}");
+                        throw new InvalidOperationException($"Authentication error displayed in UI: {alert.Text}");
                     }
                 }
 
                 return false;
             });
 
-            Assert.True(resultFound, "A mensagem de sucesso da autenticação deve ser exibida na interface.");
-            _output.WriteLine("[UI SUCCESS] Notificação de sucesso de login observada na UI!");
+            Assert.True(resultFound, "Success message should be displayed in interface.");
+            _output.WriteLine("[UI SUCCESS] Login success notification observed in UI!");
 
-            // 6. Auditoria do tráfego HTTP capturado pelo navegador
+            // 6. Network audit captured by browser
             VerifyNetworkTraffic(driver);
         }
         catch (Exception ex)
@@ -193,15 +189,11 @@ public class WebAuthFlowUITests
         }
         finally
         {
-            // Limpeza visual de destaques antes de encerrar
             try
             {
                 ClearAllHighlights(driver);
             }
-            catch
-            {
-                // Ignora se o browser já estiver fechado
-            }
+            catch { }
         }
     }
 
@@ -252,16 +244,13 @@ public class WebAuthFlowUITests
                     }
                 }
             }
-            catch
-            {
-                // Logs não-JSON ou irrelevantes
-            }
+            catch { }
         }
 
         if (observedRequestUrl != null)
         {
-            _output.WriteLine($"[NETWORK AUDIT] Requisição detectada: {observedRequestMethod} {observedRequestUrl}");
-            _output.WriteLine($"[NETWORK AUDIT] Status HTTP recebido: {observedResponseStatusCode}");
+            _output.WriteLine($"[NETWORK AUDIT] Request detected: {observedRequestMethod} {observedRequestUrl}");
+            _output.WriteLine($"[NETWORK AUDIT] HTTP status received: {observedResponseStatusCode}");
 
             Assert.Equal("POST", observedRequestMethod);
             Assert.Contains("/api/v1/auth/login", observedRequestUrl);
@@ -270,14 +259,14 @@ public class WebAuthFlowUITests
         }
         else
         {
-            _output.WriteLine("[NETWORK AUDIT] Requisição não capturada nos logs de performance ou processada diretamente.");
+            _output.WriteLine("[NETWORK AUDIT] Request not captured in performance logs or processed directly.");
         }
     }
 
     private void HumanType(IWebDriver driver, IWebElement element, string text)
     {
         HighlightElement(driver, element);
-        Thread.Sleep(_actionDelayMs);
+        if (_actionDelayMs > 0) Thread.Sleep(_actionDelayMs);
 
         element.Click();
         element.Clear();
@@ -290,17 +279,16 @@ public class WebAuthFlowUITests
             }
         }
 
-        // Garante que o evento 'change' seja disparado no input do Blazor/MudBlazor
         element.SendKeys(Keys.Tab);
 
-        Thread.Sleep(_actionDelayMs);
+        if (_actionDelayMs > 0) Thread.Sleep(_actionDelayMs);
         RemoveHighlight(driver, element);
     }
 
     private void HumanClick(IWebDriver driver, IWebElement element)
     {
         HighlightElement(driver, element);
-        Thread.Sleep(_actionDelayMs);
+        if (_actionDelayMs > 0) Thread.Sleep(_actionDelayMs);
 
         try
         {
@@ -311,7 +299,7 @@ public class WebAuthFlowUITests
             ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", element);
         }
 
-        Thread.Sleep(_actionDelayMs);
+        if (_actionDelayMs > 0) Thread.Sleep(_actionDelayMs);
         RemoveHighlight(driver, element);
     }
 
@@ -332,10 +320,7 @@ public class WebAuthFlowUITests
                 "}",
                 element);
         }
-        catch
-        {
-            // Fallback silencioso se o elemento não puder ser estilizado
-        }
+        catch { }
     }
 
     private void RemoveHighlight(IWebDriver driver, IWebElement element)
@@ -354,10 +339,7 @@ public class WebAuthFlowUITests
                 "}",
                 element);
         }
-        catch
-        {
-            // Ignora se o elemento já estiver stale
-        }
+        catch { }
     }
 
     private void ClearAllHighlights(IWebDriver driver)
@@ -375,9 +357,6 @@ public class WebAuthFlowUITests
                 "  el.removeAttribute('data-original-box-shadow');" +
                 "});");
         }
-        catch
-        {
-            // Ignora se driver foi encerrado
-        }
+        catch { }
     }
 }

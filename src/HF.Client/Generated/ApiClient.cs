@@ -39,7 +39,7 @@ namespace HF.Client
             ApiClientBuilder.RegisterDefaultDeserializer<FormParseNodeFactory>();
             if (string.IsNullOrEmpty(RequestAdapter.BaseUrl))
             {
-                RequestAdapter.BaseUrl = "http://127.0.0.1:8080";
+                RequestAdapter.BaseUrl = "http://horizon.gdhub.xyz";
             }
             PathParameters.TryAdd("baseurl", RequestAdapter.BaseUrl);
         }

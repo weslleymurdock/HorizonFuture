@@ -72,6 +72,7 @@
                         <MudTextField T="string"
                                       Label="Nome do Curso"
                                       @bind-Value="PageModel.Name"
+                                      Immediate="true"
                                       Required="true"
                                       RequiredError="O nome do curso é obrigatório"
                                       MaxLength="150"
@@ -87,6 +88,7 @@
                         <MudTextField T="string"
                                       Label="Código do Curso"
                                       @bind-Value="PageModel.Code"
+                                      Immediate="true"
                                       Required="true"
                                       RequiredError="O código do curso é obrigatório"
                                       MaxLength="30"
@@ -172,6 +174,7 @@
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                ButtonType="ButtonType.Submit"
+                               OnClick="() => PageModel.CreateCourseAsync()"
                                Disabled="@PageModel.IsBusy"
                                aria-label="Salvar novo curso">
                         @if (PageModel.IsBusy)

@@ -9,9 +9,11 @@ using Microsoft.Kiota.Http.HttpClientLibrary;
 using HF.Client;
 using HF.Shared.Auth;
 using HF.Shared.Courses;
+using HF.Shared.Subjects;
 using HF.Shared.PageModels;
 using HF.Shared.PageModels.Auth;
 using HF.Shared.PageModels.Courses;
+using HF.Shared.PageModels.Subjects;
 
 namespace HF.Shared;
 
@@ -43,6 +45,12 @@ public static class ServiceCollectionExtensions
             services.AddScoped<CourseCreatePageModel>();
             services.AddScoped<CourseDetailsPageModel>();
             services.AddScoped<CourseEditPageModel>();
+
+            // Subjects PageModels
+            services.AddScoped<SubjectListPageModel>();
+            services.AddScoped<SubjectCreatePageModel>();
+            services.AddScoped<SubjectDetailsPageModel>();
+            services.AddScoped<SubjectEditPageModel>();
 
             return services;
         }
@@ -81,6 +89,7 @@ public static class ServiceCollectionExtensions
 
             services.TryAddScoped<IAuthService, AuthService>();
             services.TryAddScoped<ICourseService, CourseService>();
+            services.TryAddScoped<ISubjectService, SubjectService>();
 
             return services;
         }

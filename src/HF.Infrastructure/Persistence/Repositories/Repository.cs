@@ -84,17 +84,12 @@ public class Repository<TEntity> : IRepository<TEntity>
     {
         try
         {
-            await uow.BeginTransactionAsync(cancellationToken);
-
             EntityEntry<TEntity> entityEntry = await Set.AddAsync(entity, cancellationToken);
-
             await uow.SaveChangesAsync(cancellationToken);
-            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch (Exception e)
         {
             logger.LogError(e, "Error saving data : {Message}", e.Message);
-            await uow.RollbackTransactionAsync(cancellationToken);
             throw;
         }
     }
@@ -104,15 +99,12 @@ public class Repository<TEntity> : IRepository<TEntity>
     {
         try
         {
-            await uow.BeginTransactionAsync(cancellationToken);
             Set.Update(entity);
             await uow.SaveChangesAsync(cancellationToken);
-            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
             logger.LogError(e, "Error updating data : {Message}", e.Message);
-            await uow.RollbackTransactionAsync(cancellationToken);
             throw;
         }
     }
@@ -122,15 +114,12 @@ public class Repository<TEntity> : IRepository<TEntity>
     {
         try
         {
-            await uow.BeginTransactionAsync(cancellationToken);
             Set.Remove(entity);
             await uow.SaveChangesAsync(cancellationToken);
-            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
             logger.LogError(e, "Error removing data : {Message}", e.Message);
-            await uow.RollbackTransactionAsync(cancellationToken);
             throw;
         }
     }
@@ -140,15 +129,12 @@ public class Repository<TEntity> : IRepository<TEntity>
     {
         try
         {
-            await uow.BeginTransactionAsync(cancellationToken);
             Set.RemoveRange(entities);
             await uow.SaveChangesAsync(cancellationToken);
-            await uow.CommitTransactionAsync(cancellationToken);
         }
         catch(Exception e)
         {
             logger.LogError(e, "Error removing data range: {Message}", e.Message);
-            await uow.RollbackTransactionAsync(cancellationToken);
             throw;
         }
     }
