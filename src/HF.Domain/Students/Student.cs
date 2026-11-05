@@ -1,4 +1,5 @@
 using HF.Domain.Common.Entities;
+using HF.Domain.Enrollments;
 
 namespace HF.Domain.Students;
 
@@ -72,5 +73,10 @@ public class Student(string? id = null) : EntityBase(id)
     /// Date of first enrollment with the NGO.
     /// </summary>
     public DateOnly EnrollmentDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+
+    /// <summary>
+    /// Subject enrollments associated with this student.
+    /// </summary>
+    public ICollection<Enrollment> Enrollments { get; set; } = [];
 }
 

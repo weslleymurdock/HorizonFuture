@@ -1,4 +1,5 @@
 using HF.Domain.Common.Entities;
+using HF.Domain.TeacherAssignments;
 
 namespace HF.Domain.Teachers;
 
@@ -47,5 +48,10 @@ public class Teacher(string? id = null) : EntityBase(id)
     /// Current activity status.
     /// </summary>
     public TeacherStatus Status { get; set; } = TeacherStatus.Active;
+
+    /// <summary>
+    /// Teaching assignments associated with this teacher.
+    /// </summary>
+    public ICollection<TeacherAssignment> Assignments { get; set; } = [];
 }
 

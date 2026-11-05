@@ -1,4 +1,6 @@
 using HF.Domain.Common.Entities;
+using HF.Domain.Enrollments;
+using HF.Domain.TeacherAssignments;
 
 namespace HF.Domain.Courses;
 
@@ -46,5 +48,15 @@ public class Subject(string? id = null) : EntityBase(id)
     /// Subject operational status.
     /// </summary>
     public SubjectStatus Status { get; set; } = SubjectStatus.Active;
+
+    /// <summary>
+    /// Teacher assignments for this subject.
+    /// </summary>
+    public ICollection<TeacherAssignment> TeacherAssignments { get; set; } = [];
+
+    /// <summary>
+    /// Student enrollments in this subject.
+    /// </summary>
+    public ICollection<Enrollment> Enrollments { get; set; } = [];
 }
 
