@@ -20,6 +20,10 @@ Each backend/database installation belongs to one NGO. Do not add tenant partiti
 
 Media is stored outside relational rows. Relational records carry only authorized metadata and stable references. Transfer tokens, access paths, retention, deletion, and retry behavior need independent design.
 
+## API client and Kiota consumption
+
+Client presentation layers consume the backend REST API exclusively through the typed Kiota SDK in `HF.Client`, encapsulated by shared services in `HF.Shared`. See the [Kiota API Consumption Guide](kiota-api-consumption.md) for generation workflows, host Dependency Injection, and feature authoring conventions.
+
 ## Decision records
 
 Document material choices such as provider selection, identity model, per-NGO installation boundaries, stable identifiers, cursor format, payload evolution, and media storage. Include alternatives considered, evidence, consequences, and migration implications.

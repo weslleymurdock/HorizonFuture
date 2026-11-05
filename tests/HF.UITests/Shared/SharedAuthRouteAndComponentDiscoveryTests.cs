@@ -3,6 +3,9 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Authentication;
+using HF.Client;
 using HF.Shared;
 using HF.Shared.Auth;
 using HF.Shared.PageModels.Auth;
@@ -34,7 +37,7 @@ public class SharedAuthRouteAndComponentDiscoveryTests
     }
 
     [Fact]
-    public void AddPageModels_RegistersAllAuthPageModels_AsScopedServices()
+    public void AddPageModels_RegistersAllAuthPageModels_AndKiotaServices_AsScoped()
     {
         var services = new ServiceCollection();
 
@@ -71,11 +74,21 @@ public class SharedAuthRouteAndComponentDiscoveryTests
         var managePermissionsModel = sp.GetService<ManagePermissionsPageModel>();
         Assert.NotNull(managePermissionsModel);
 
-        var authService = sp.GetService<IAuthService>();
-        Assert.NotNull(authService);
-
+        // Verify Kiota and Auth service resolution
         var tokenStore = sp.GetService<ITokenStore>();
         Assert.NotNull(tokenStore);
+
+        var authProvider = sp.GetService<IAuthenticationProvider>();
+        Assert.NotNull(authProvider);
+
+        var requestAdapter = sp.GetService<IRequestAdapter>();
+        Assert.NotNull(requestAdapter);
+
+        var apiClient = sp.GetService<ApiClient>();
+        Assert.NotNull(apiClient);
+
+        var authService = sp.GetService<IAuthService>();
+        Assert.NotNull(authService);
+        Assert.IsType<AuthService>(authService);
     }
 }
-
