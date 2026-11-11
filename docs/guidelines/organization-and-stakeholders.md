@@ -79,7 +79,12 @@ erDiagram
   encerrados preservam seu intervalo histórico; somente papéis ainda abertos são encerrados
   com a membership.
 - `MembershipScope` carrega a organização e a unidade do departamento para que alterações de
-  escopo rejeitem combinações incompatíveis antes da persistência.
+  escopo rejeitem combinações incompatíveis antes da persistência. Departamentos sem unidade
+  exigem confirmação explícita, e departamentos vinculados exigem a unidade correspondente;
+  omitir essa informação é inválido.
+- Unidades arquivadas não podem receber novas unidades subordinadas, ser usadas como unidade de
+  departamento ou receber movimentações. Organizações arquivadas não podem ser arquivadas
+  novamente.
 - Identidades podem ser reativadas explicitamente. Atualizações de identidades arquivadas são
   rejeitadas.
 - A normalização de matching remove marcas Unicode, normaliza caixa e espaços, e nunca classifica

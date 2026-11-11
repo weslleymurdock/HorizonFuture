@@ -63,6 +63,11 @@ public sealed class Organization : AggregateRoot
             throw new DomainException("organization.unit.parent_not_found", "The parent unit does not belong to this organization.");
         }
 
+        if (parentUnitId is not null && FindUnit(parentUnitId).Status != OrganizationalUnitStatus.Active)
+        {
+            throw new DomainException("organization.unit.parent_inactive", "An archived unit cannot receive subordinate units.");
+        }
+
         var unit = new OrganizationalUnit(Id, normalizedName, parentUnitId, id);
         _units.Add(unit);
         UpdatedAt = DateTime.UtcNow;
@@ -76,6 +81,11 @@ public sealed class Organization : AggregateRoot
         if (unitId is not null && _units.All(unit => unit.Id != unitId))
         {
             throw new DomainException("organization.department.unit_not_found", "The department unit does not belong to this organization.");
+        }
+
+        if (unitId is not null && FindUnit(unitId).Status != OrganizationalUnitStatus.Active)
+        {
+            throw new DomainException("organization.department.unit_inactive", "A department cannot be added to an archived unit.");
         }
 
         if (_departments.Any(department =>
@@ -125,6 +135,11 @@ public sealed class Organization : AggregateRoot
     {
         EnsureActive();
         var unit = FindUnit(unitId);
+        if (unit.Status != OrganizationalUnitStatus.Active)
+        {
+            throw new DomainException("organization.unit.inactive", "An archived unit cannot be moved.");
+        }
+
         if (parentUnitId == unitId)
         {
             throw new DomainException("organization.unit.self_parent", "A unit cannot be its own parent.");
@@ -137,7 +152,12 @@ public sealed class Organization : AggregateRoot
             return;
         }
 
-        _ = FindUnit(parentUnitId);
+        var parentUnit = FindUnit(parentUnitId);
+        if (parentUnit.Status != OrganizationalUnitStatus.Active)
+        {
+            throw new DomainException("organization.unit.parent_inactive", "An archived unit cannot receive subordinate units.");
+        }
+
         var visited = new HashSet<string>(StringComparer.Ordinal) { unitId };
         var current = parentUnitId;
         while (current is not null)
@@ -178,6 +198,7 @@ public sealed class Organization : AggregateRoot
 
     public void Archive()
     {
+        EnsureActive();
         if (_units.Any(unit => unit.Status == OrganizationalUnitStatus.Active) ||
             _departments.Any(department => department.IsActive))
         {

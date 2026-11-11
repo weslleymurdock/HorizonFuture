@@ -104,4 +104,62 @@ public sealed class OrganizationDomainTests
 
         Assert.Equal("organization.unit.active_children", exception.Code);
     }
+
+    [Fact]
+    public void ArchivedUnitsCannotReceiveChildrenOrDepartments()
+    {
+        var organization = new OrganizationAggregate("Instituto Horizonte", OrganizationType.CivilSocietyOrganization);
+        var archived = organization.AddUnit("Archived");
+        organization.ArchiveUnit(archived.Id, archived.EffectiveFrom);
+
+        var child = Assert.Throws<DomainException>(() => organization.AddUnit("Child", archived.Id));
+        var department = Assert.Throws<DomainException>(() => organization.AddDepartment("Support", archived.Id));
+
+        Assert.Equal("organization.unit.parent_inactive", child.Code);
+        Assert.Equal("organization.department.unit_inactive", department.Code);
+        Assert.DoesNotContain(organization.Units, unit => unit.Name == "Child");
+        Assert.Empty(organization.Departments);
+    }
+
+    [Fact]
+    public void MoveUnitRejectsArchivedUnitAndArchivedParentWithoutChangingHierarchy()
+    {
+        var organization = new OrganizationAggregate("Instituto Horizonte", OrganizationType.CivilSocietyOrganization);
+        var archivedParent = organization.AddUnit("Archived Parent");
+        var activeParent = organization.AddUnit("Active Parent");
+        var child = organization.AddUnit("Child", activeParent.Id);
+        organization.ArchiveUnit(archivedParent.Id, archivedParent.EffectiveFrom);
+
+        var exception = Assert.Throws<DomainException>(() => organization.MoveUnit(child.Id, archivedParent.Id));
+
+        Assert.Equal("organization.unit.parent_inactive", exception.Code);
+        Assert.Equal(activeParent.Id, child.ParentUnitId);
+    }
+
+    [Fact]
+    public void ArchivedUnitCannotBeMoved()
+    {
+        var organization = new OrganizationAggregate("Instituto Horizonte", OrganizationType.CivilSocietyOrganization);
+        var archived = organization.AddUnit("Archived");
+        var activeParent = organization.AddUnit("Active Parent");
+        organization.ArchiveUnit(archived.Id, archived.EffectiveFrom);
+
+        var exception = Assert.Throws<DomainException>(() => organization.MoveUnit(archived.Id, activeParent.Id));
+
+        Assert.Equal("organization.unit.inactive", exception.Code);
+        Assert.Null(archived.ParentUnitId);
+    }
+
+    [Fact]
+    public void ArchiveOrganizationRejectsRepeatedTransition()
+    {
+        var organization = new OrganizationAggregate("Instituto Horizonte", OrganizationType.CivilSocietyOrganization);
+        organization.Archive();
+        var updatedAt = organization.UpdatedAt;
+
+        var exception = Assert.Throws<DomainException>(() => organization.Archive());
+
+        Assert.Equal("organization.inactive", exception.Code);
+        Assert.Equal(updatedAt, organization.UpdatedAt);
+    }
 }

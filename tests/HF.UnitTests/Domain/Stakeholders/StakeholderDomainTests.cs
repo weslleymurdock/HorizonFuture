@@ -64,6 +64,27 @@ public sealed class StakeholderDomainTests
     }
 
     [Fact]
+    public void MembershipScopeRequiresExplicitDepartmentRelationshipInformation()
+    {
+        var membership = new OrganizationalMembership("org-1", "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
+
+        membership.ChangeScope(new MembershipScope("org-1"));
+        membership.ChangeScope(new MembershipScope("org-1", "unit-1"));
+        membership.ChangeScope(new MembershipScope("org-1", departmentId: "department-1", departmentWithoutUnitConfirmed: true));
+        membership.ChangeScope(new MembershipScope("org-1", "unit-1", "department-1", "unit-1"));
+
+        var omitted = Assert.Throws<DomainException>(() =>
+            new MembershipScope("org-1", departmentId: "department-1"));
+        var incompatible = Assert.Throws<DomainException>(() =>
+            membership.ChangeScope(new MembershipScope("org-1", "unit-2", "department-1", "unit-1")));
+
+        Assert.Equal("membership.scope_mismatch", omitted.Code);
+        Assert.Equal("membership.scope_mismatch", incompatible.Code);
+        Assert.Equal("unit-1", membership.UnitId);
+        Assert.Equal("department-1", membership.DepartmentId);
+    }
+
+    [Fact]
     public void PersonRelationship_RejectsSelfReference()
     {
         var exception = Assert.Throws<DomainException>((Action)(() =>

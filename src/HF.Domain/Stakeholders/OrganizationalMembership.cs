@@ -52,8 +52,8 @@ public sealed class OrganizationalMembership : AggregateRoot
             throw new DomainException("membership.inactive", "The scope of an inactive membership cannot be changed.");
         }
 
-        if (scope.OrganizationId != OrganizationId ||
-            (scope.DepartmentUnitId is not null && scope.DepartmentUnitId != scope.UnitId))
+        if (!scope.IsStructurallyValid ||
+            scope.OrganizationId != OrganizationId)
         {
             throw new DomainException("membership.scope_mismatch", "The membership scope does not belong to the membership organization.");
         }
@@ -120,24 +120,38 @@ public sealed class OrganizationalMembership : AggregateRoot
 
 public sealed record MembershipScope
 {
-    public MembershipScope(string organizationId, string? unitId = null, string? departmentId = null, string? departmentUnitId = null)
+    public MembershipScope(
+        string organizationId,
+        string? unitId = null,
+        string? departmentId = null,
+        string? departmentUnitId = null,
+        bool departmentWithoutUnitConfirmed = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(organizationId);
-        if (departmentId is null && departmentUnitId is not null)
-        {
-            throw new DomainException("membership.scope_mismatch", "A department unit requires a department.");
-        }
 
         OrganizationId = organizationId;
         UnitId = unitId;
         DepartmentId = departmentId;
         DepartmentUnitId = departmentUnitId;
+        DepartmentWithoutUnitConfirmed = departmentWithoutUnitConfirmed;
+
+        if (!IsStructurallyValid)
+        {
+            throw new DomainException("membership.scope_mismatch", "The membership scope does not contain a valid department relationship.");
+        }
     }
 
     public string OrganizationId { get; }
     public string? UnitId { get; }
     public string? DepartmentId { get; }
     public string? DepartmentUnitId { get; }
+    public bool DepartmentWithoutUnitConfirmed { get; }
+    public bool IsStructurallyValid =>
+        DepartmentId is null
+            ? UnitId is not null || (DepartmentUnitId is null && !DepartmentWithoutUnitConfirmed)
+            : UnitId is null
+                ? DepartmentUnitId is null && DepartmentWithoutUnitConfirmed
+                : DepartmentUnitId == UnitId && !DepartmentWithoutUnitConfirmed;
 }
 
 public sealed class MembershipRole : EntityBase
