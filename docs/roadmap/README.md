@@ -12,7 +12,7 @@ The financial scope is NGO-oriented: trace every resource from origin to project
 
 | Stage | File | Outcome |
 |---|---|---|
-| 01 | [01-foundations.md](01-foundations.md) | Product discovery, workflows, privacy, and scope ([discovery artifacts](../discovery/README.md)) |
+| 01 | [01-foundations.md](01-foundations.md) | Product discovery and executable shared domain kernel ([discovery artifacts](../discovery/README.md)) |
 | 02 | [02-organization-and-stakeholders.md](02-organization-and-stakeholders.md) | NGO structure, governance, people, roles, stakeholders |
 | 03 | [03-social-service-delivery.md](03-social-service-delivery.md) | Programs, beneficiaries, families, services, activities, attendance |
 | 04 | [04-projects-activities-and-impact.md](04-projects-activities-and-impact.md) | Project lifecycle, work plans, indicators, evidence, outcomes |
