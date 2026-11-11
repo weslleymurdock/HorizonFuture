@@ -5,7 +5,7 @@
 This set records the initial discovery for HorizonFuture — Olhar do
 Futuro for Brazilian nonprofit organizations (NGOs and OSCs).
 It defines problems, processes, observable requirements, and still-open
-decisions to guide roadmap stages 02–10. It is not a description of
+decisions to guide roadmap stages 01–10. It is not a description of
 features already implemented.
 
 ## Evidence and conventions
