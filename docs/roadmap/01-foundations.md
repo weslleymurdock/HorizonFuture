@@ -3,6 +3,14 @@
 ## Objective
 Define the product scope for an open-source management platform for Brazilian NGOs/OSCs, expanding beyond stakeholder CRUD into social-program delivery, funding lifecycle, and end-to-end financial resource management. This is discovery, not implementation evidence.
 
+## Current status
+Internal discovery artifacts are documented under
+[docs/discovery](../discovery/README.md). Stage acceptance remains **pending**:
+the repository contains no recorded review of financial terminology by a real
+NGO finance stakeholder or of reporting obligations by an accountant/advisor.
+Documentation completion is therefore not external validation or stage
+acceptance.
+
 ## Dependencies
 None.
 
