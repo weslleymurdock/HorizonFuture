@@ -11,22 +11,25 @@ public sealed class OrganizationalMembership : AggregateRoot
     private OrganizationalMembership() { }
 
     public OrganizationalMembership(
-        string organizationId,
+        MembershipScope scope,
         string identityId,
         IdentityKind identityKind,
         DateOnly startsOn,
-        string? unitId = null,
-        string? departmentId = null,
         string? id = null) : base(id)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(organizationId);
+        ArgumentNullException.ThrowIfNull(scope);
         ArgumentException.ThrowIfNullOrWhiteSpace(identityId);
-        OrganizationId = organizationId;
+        if (!scope.IsStructurallyValid)
+        {
+            throw new DomainException("membership.scope_mismatch", "The membership scope does not contain a valid department relationship.");
+        }
+
+        OrganizationId = scope.OrganizationId;
         IdentityId = identityId;
         IdentityKind = identityKind;
         StartsOn = startsOn;
-        UnitId = unitId;
-        DepartmentId = departmentId;
+        UnitId = scope.UnitId;
+        DepartmentId = scope.DepartmentId;
         Status = MembershipStatus.Active;
         if (EndsOn < StartsOn)
         {
@@ -148,7 +151,9 @@ public sealed record MembershipScope
     public bool DepartmentWithoutUnitConfirmed { get; }
     public bool IsStructurallyValid =>
         DepartmentId is null
-            ? UnitId is not null || (DepartmentUnitId is null && !DepartmentWithoutUnitConfirmed)
+            ? UnitId is null
+                ? DepartmentUnitId is null && !DepartmentWithoutUnitConfirmed
+                : DepartmentUnitId is null && !DepartmentWithoutUnitConfirmed
             : UnitId is null
                 ? DepartmentUnitId is null && DepartmentWithoutUnitConfirmed
                 : DepartmentUnitId == UnitId && !DepartmentWithoutUnitConfirmed;

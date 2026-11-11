@@ -10,7 +10,7 @@ public sealed class StakeholderDomainTests
     public void Membership_AllowsMultipleNonOverlappingRolesAndEndsTheirHistory()
     {
         var membership = new OrganizationalMembership(
-            "org-1",
+            new MembershipScope("org-1"),
             "person-1",
             IdentityKind.Person,
             new DateOnly(2026, 1, 1));
@@ -27,7 +27,7 @@ public sealed class StakeholderDomainTests
     [Fact]
     public void Membership_RejectsOverlappingDuplicateRole()
     {
-        var membership = new OrganizationalMembership("org-1", "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
+        var membership = new OrganizationalMembership(new MembershipScope("org-1"), "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
         membership.AddRole(StakeholderRoleType.Volunteer, new DateOnly(2026, 1, 1));
 
         var exception = Assert.Throws<DomainException>((Action)(() =>
@@ -39,7 +39,7 @@ public sealed class StakeholderDomainTests
     [Fact]
     public void Membership_RejectsRoleOutsideMembershipAndEndingBeforeRoleStarts()
     {
-        var membership = new OrganizationalMembership("org-1", "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
+        var membership = new OrganizationalMembership(new MembershipScope("org-1"), "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
         membership.AddRole(StakeholderRoleType.Volunteer, new DateOnly(2026, 3, 1));
 
         var exception = Assert.Throws<DomainException>(() => membership.End(new DateOnly(2026, 2, 1)));
@@ -51,7 +51,7 @@ public sealed class StakeholderDomainTests
     [Fact]
     public void Membership_RejectsInvalidScopeAndScopeChangesAfterEnding()
     {
-        var membership = new OrganizationalMembership("org-1", "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
+        var membership = new OrganizationalMembership(new MembershipScope("org-1"), "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
         var mismatch = Assert.Throws<DomainException>(() =>
             membership.ChangeScope(new MembershipScope("org-2", "unit-1", "department-1", "unit-2")));
         Assert.Equal("membership.scope_mismatch", mismatch.Code);
@@ -66,22 +66,51 @@ public sealed class StakeholderDomainTests
     [Fact]
     public void MembershipScopeRequiresExplicitDepartmentRelationshipInformation()
     {
-        var membership = new OrganizationalMembership("org-1", "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
+        var membership = new OrganizationalMembership(new MembershipScope("org-1"), "person-1", IdentityKind.Person, new DateOnly(2026, 1, 1));
 
-        membership.ChangeScope(new MembershipScope("org-1"));
-        membership.ChangeScope(new MembershipScope("org-1", "unit-1"));
-        membership.ChangeScope(new MembershipScope("org-1", departmentId: "department-1", departmentWithoutUnitConfirmed: true));
+        Assert.True(new MembershipScope("org-1").IsStructurallyValid);
+        Assert.True(new MembershipScope("org-1", "unit-1").IsStructurallyValid);
+        Assert.True(new MembershipScope("org-1", departmentId: "department-1", departmentWithoutUnitConfirmed: true).IsStructurallyValid);
+        Assert.True(new MembershipScope("org-1", "unit-1", "department-1", "unit-1").IsStructurallyValid);
+
         membership.ChangeScope(new MembershipScope("org-1", "unit-1", "department-1", "unit-1"));
 
         var omitted = Assert.Throws<DomainException>(() =>
             new MembershipScope("org-1", departmentId: "department-1"));
+        var residualDepartmentUnit = Assert.Throws<DomainException>(() =>
+            new MembershipScope("org-1", "unit-1", departmentUnitId: "unit-1"));
+        var residualConfirmation = Assert.Throws<DomainException>(() =>
+            new MembershipScope("org-1", "unit-1", departmentWithoutUnitConfirmed: true));
         var incompatible = Assert.Throws<DomainException>(() =>
             membership.ChangeScope(new MembershipScope("org-1", "unit-2", "department-1", "unit-1")));
 
         Assert.Equal("membership.scope_mismatch", omitted.Code);
+        Assert.Equal("membership.scope_mismatch", residualDepartmentUnit.Code);
+        Assert.Equal("membership.scope_mismatch", residualConfirmation.Code);
         Assert.Equal("membership.scope_mismatch", incompatible.Code);
         Assert.Equal("unit-1", membership.UnitId);
         Assert.Equal("department-1", membership.DepartmentId);
+    }
+
+    [Fact]
+    public void MembershipCreationUsesValidatedScopeContract()
+    {
+        var membership = new OrganizationalMembership(
+            new MembershipScope("org-1", "unit-1", "department-1", "unit-1"),
+            "person-1",
+            IdentityKind.Person,
+            new DateOnly(2026, 1, 1));
+
+        Assert.Equal("org-1", membership.OrganizationId);
+        Assert.Equal("unit-1", membership.UnitId);
+        Assert.Equal("department-1", membership.DepartmentId);
+
+        Assert.Throws<DomainException>(() =>
+            new MembershipScope("org-1", "unit-1", "department-1", "unit-2"));
+        Assert.Throws<ArgumentException>(() =>
+            new MembershipScope(""));
+        Assert.Throws<ArgumentException>(() =>
+            new OrganizationalMembership(new MembershipScope("org-1"), "", IdentityKind.Person, new DateOnly(2026, 1, 1)));
     }
 
     [Fact]

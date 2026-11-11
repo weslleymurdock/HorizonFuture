@@ -82,6 +82,10 @@ erDiagram
   escopo rejeitem combinações incompatíveis antes da persistência. Departamentos sem unidade
   exigem confirmação explícita, e departamentos vinculados exigem a unidade correspondente;
   omitir essa informação é inválido.
+- A criação de `OrganizationalMembership` recebe um `MembershipScope` estruturalmente válido;
+  criação e alteração de escopo usam o mesmo contrato. A Application resolve as referências
+  organizacionais antes de construir o escopo, enquanto o Domain valida apenas a coerência
+  estrutural transportada pelo contrato.
 - Unidades arquivadas não podem receber novas unidades subordinadas, ser usadas como unidade de
   departamento ou receber movimentações. Organizações arquivadas não podem ser arquivadas
   novamente.

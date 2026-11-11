@@ -40,7 +40,7 @@ dotnet test tests\HF.UnitTests\HF.UnitTests.csproj
 ```
 
 The external execution record includes the host, SDK, exact backend commands, and literal test
-totals: 120 passed, 0 failed, and 0 skipped on `SNOWICE` with .NET SDK `10.0.403`. UI tests are
+totals: 121 passed, 0 failed, and 0 skipped on `SNOWICE` with .NET SDK `10.0.403`. UI tests are
 intentionally excluded because no interface implementation is part of Stage 02.
 
 Backend unit tests are intentionally isolated from `HF.Shared`, `HF.Client`, MAUI, and browser/UI
@@ -51,6 +51,10 @@ Archived organizational units cannot receive subordinate units, departments, or 
 `MembershipScope` contract requires explicit confirmation for departments without a unit and a
 matching unit identifier for departments with a unit. Archived organizations reject repeated
 archival.
+
+Membership creation also requires a structurally valid `MembershipScope`; the Application layer
+must resolve organizational references before constructing it, and the Domain validates the
+structural contract without querying persistence.
 
 ## Work
 - Define the NGO profile, legal/registration identifiers, addresses, contacts, governance bodies, units, departments, and operating locations.
