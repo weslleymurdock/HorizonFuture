@@ -6,7 +6,7 @@ The planned deployment is one independent installation per NGO. Each installatio
 
 A separately authorized cross-installation reporting/aggregation service is an optional future component. It must be independently provisioned, receive explicit authorization from each participating NGO, and must not be required for ordinary app operation or sync.
 
-This is a target documented for future implementation, not a claim that deployment automation, production routes, auth, database integration, MAUI URL configuration, or sync features already exist. The current repository still contains starter templates.
+This is a target deployment model, not a claim that production infrastructure or sync is ready. The repository has backend foundations and UI scaffolds; the expanded NGO financial domain, production deployment, complete offline client, and synchronization remain roadmap work.
 
 ## Provider selection and free-tier evidence
 
@@ -61,7 +61,7 @@ Repeat this sequence for each NGO, and keep development, staging, and production
 1. Build an environment-specific app configuration containing that installation's HTTPS backend base URL. Do not include database credentials, Infisical credentials, signing keys, or privileged API keys in the client.
 2. Confirm build/release identity and display name identify the NGO/environment where needed to avoid operators installing the wrong app configuration.
 3. Distribute the app only to the intended NGO cohort. Keep dev, staging, and production builds/configuration distinct; verify the URL before release.
-4. The MAUI app continues to use local SQLite for normal reads/writes while offline. The server URL only becomes necessary for authenticated sync and other server-backed operations. Preserve transactional Outbox/Inbox, idempotent Push, ordered server-issued Pull cursor, atomic local page+cursor commits, optimistic concurrency, and entity-specific conflict handling.
+4. The MAUI app uses local SQLite exclusively for normal reads/writes while offline. PostgreSQL is the only server relational database; the backend must not use SQLite. The server URL only becomes necessary for authenticated sync and other server-backed operations. Preserve transactional Outbox/Inbox, idempotent Push, ordered server-issued Pull cursor, atomic local page+cursor commits, optimistic concurrency, and entity-specific conflict handling.
 5. Record installation URL, environment, app version, schema/API compatibility window, database migration version, and responsible operator without recording secrets or personal records.
 
 ## Environment separation and operations
