@@ -1,28 +1,26 @@
-# 01 — Foundations and domain discovery
+# 01 — Product discovery and domain requirements
 
 ## Objective
-
-Turn the starter repository into an agreed, testable implementation plan grounded in the NGO's actual workflows before choosing schemas or sync behavior.
+Define the product scope for an open-source management platform for Brazilian NGOs/OSCs, expanding beyond stakeholder CRUD into social-program delivery, funding lifecycle, and end-to-end financial resource management. This is discovery, not implementation evidence.
 
 ## Dependencies
-
-None. Current baseline: .NET 10 projects under `src/`; `HF.Mobile` is a MAUI Blazor Hybrid template, `HF.Web` is a Blazor WebAssembly template with MudBlazor 9.*, and `HF.API` contains the generated weather sample. No product domain, production client workflows, API integration, tests, authentication, persistence, or sync code is present.
+None.
 
 ## Work
-
-- Interview stakeholders and map roles, organizations, school units, users, devices, student/family records, enrollment, attendance, and workflows actually in scope.
-- Define offline use cases, expected outage duration, shared-device use, account lifecycle, data volumes, supported platforms, accessibility, and connectivity constraints.
-- Define data classification, minimum necessary collection, retention/deletion, audit needs, and who may view/change each record.
-- Record architecture decisions and assumptions, including stable identifier strategy, API compatibility expectations, local schema support window, and provider evaluation criteria.
-- Replace starter template content only as implementation work begins; keep this documentation explicit that the templates currently remain.
+- Map NGO profiles, governance, units, staff, volunteers, beneficiaries/families, donors, suppliers, funders, partners, and their relationships.
+- Map the lifecycle from strategic planning and project design through funding applications, awards/agreements, execution, financial control, evidence, accountability, and impact reporting.
+- Interview finance, project coordination, educators/social workers, executive management, board members, and external accountants/funders where possible.
+- Catalogue financial scenarios: unrestricted and restricted donations, grants, public/private agreements, multiple funders per project, transfers, reimbursements, in-kind donations, recurring commitments, cash/bank accounts, petty cash, shared costs, refunds, and returned funds.
+- Define approval limits, segregation of duties, evidence requirements, funding restrictions, reporting calendars, and the difference between operational management and statutory accounting.
+- Define offline use cases and identify which financial actions may be created offline, which require approval/server validation, and how stale balances are presented.
+- Establish data classification, LGPD purposes/legal bases, minimization, retention, access, audit, export, and deletion requirements.
+- Benchmark publicly documented competitor capabilities without copying proprietary implementation or assuming undocumented behavior.
 
 ## Acceptance criteria
-
-- A reviewed domain glossary, actor/permission matrix, prioritized offline use cases, data inventory, and threat/privacy review exist.
-- Stakeholders agree which workflows must work fully offline and which require a server.
-- Architecture decisions and unresolved questions are recorded with owners/evidence needed.
-- Baseline build and repository structure are documented without claiming unimplemented features.
+- Approved domain glossary, actor/persona matrix, workflow maps, prioritized capability backlog, data inventory, and privacy/threat assessment.
+- Explicit MVP boundary and deferred capabilities are agreed.
+- Financial terminology and reporting obligations are validated with at least one real NGO finance stakeholder and an accountant/advisor.
+- Every unresolved decision has an owner and evidence needed.
 
 ## Risks and open decisions
-
-Exact school-unit relationships, roles, sensitive fields, required offline duration, device sharing, legal retention obligations, and operational ownership are unknown until discovery.
+The actual NGO operating model, funding instruments, accounting practices, legal obligations, approval policies, and offline duration must be discovered. Avoid designing around a single NGO's exceptional workflow.
