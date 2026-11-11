@@ -38,6 +38,12 @@ The financial scope is NGO-oriented: trace every resource from origin to project
 
 Stages 01–10 are deliberately backend/domain-first. Stages 11–13 establish the cloud backend. Only then do Stages 14–17 implement the offline client and synchronization.
 
+## Stakeholder validation strategy
+
+External validation with the pilot NGO's stakeholders, finance staff, and qualified accounting/legal advisors is intentionally deferred until after the first stable release. Stage 01 and subsequent pre-release stages use the documented discovery baseline, synthetic scenarios, internal reviews, and automated tests; real-world workflows and legal/accounting obligations must not be described as externally validated.
+
+After the first stable release, the solution will be piloted with the designated NGO ("cobaia"). Feedback, observed workflows, financial terminology, reporting obligations, privacy practices, and operational gaps will be recorded as evidence and converted into prioritized changes. This post-release validation is a planned product feedback gate, not a prerequisite for implementing Stage 01. Until then, uncertain rules remain explicit assumptions or configurable policies; the product must not claim statutory accounting or legal compliance.
+
 ## Storage decision
 
 - **Server:** PostgreSQL only, hosted in the cloud. SQLite is not a server persistence option.
