@@ -15,7 +15,7 @@ features already implemented.
   should not be reconsidered at this stage.
 - **Discovered requirement**: behavior the product should provide after
   validation and implementation.
-- **Hypothesis**: interpretation to validate with an NGO or specialist.
+- **Hypothesis**: interpretation to validate with the pilot NGO or a qualified specialist after the first stable release.
 - **Pending**: cannot be accepted without external evidence or an explicit
   decision.
 
