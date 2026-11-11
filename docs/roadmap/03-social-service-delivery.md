@@ -26,13 +26,15 @@ Detailed guidelines, lifecycle diagrams, and privacy rules are documented in `do
 Backend domain stabilization and acceptance testing are complete. All tests run locally on Windows using the .NET SDK.
 
 Key domain stabilizations applied:
-- **`ProgramParticipation` instantiation:** Restricted to internal scope and coupled with `ProgramEnrollment`. Direct unvetted constructor access is prevented.
-- **Participation duplicate prevention:** Enforced via `ProgramEnrollment.HasParticipation` and `ParticipationId`. Repeated creation attempts fail immediately.
+- **`ProgramParticipation` instantiation:** Restricted to internal scope and coupled with `ProgramEnrollment`. Atomic enrollment registration (`RegisterParticipation`) prevents duplicate participations even through direct internal constructor calls.
+- **Participation duplicate prevention:** Enforced via `ProgramEnrollment.HasParticipation` and `ParticipationId`. Repeated creation attempts fail immediately, and enrolled participants cannot be cancelled or withdrawn.
 - **Atomic state transitions:** `ProgramParticipation` (`Suspend`, `Resume`, `Complete`, `Terminate`) validates all arguments and constructs history entries prior to mutating state or updating timestamps.
-- **Eligibility consistency & approval guards:** `EligibilityAssessmentResult` enforces coherence between `IsEligible` and `mandatoryCriteriaMet`. Ineligible enrollments or enrollments missing mandatory criteria assessment cannot be approved.
+- **Eligibility consistency & approval guards:** `EligibilityAssessmentResult` enforces coherence between `IsEligible` and `mandatoryCriteriaMet`. Ineligible enrollments or enrollments missing mandatory criteria assessment cannot be approved. Post-approval assessment tampering is blocked.
 - **Benefit auditability:** Full dispatch, revocation, and return lifecycle tracking with timestamps and actors (`DispatchedDate`, `DispatchedByPersonId`, `RevokedDate`, `RevokedByPersonId`, `ReturnedDate`, `ReturnedByPersonId`).
-- **Service lifecycle integrity:** Initial `Completed` or `Cancelled` states rejected in default construction; explicit `RecordCompleted` factory provided; audit actors captured.
-- **Session attendance sealing:** Attendance recording/modification blocked on completed or cancelled sessions; invalid or unrecorded statuses rejected; state preserved on failures.
+- **Service lifecycle integrity:** Initial `Completed`, `Cancelled`, or undefined enum states rejected in default construction; explicit `RecordCompleted` factory provided; audit actors and completion chronology captured.
+- **Referral traceability:** Mandatory authorship on `Dispatch`, `AcknowledgeReceipt`, `RecordOutcome`, and `Cancel`, with chronological consistency and terminal state protection.
+- **Session lifecycle and temporal integrity:** Attendance recording/modification blocked on completed or cancelled sessions; invalid or unrecorded statuses rejected; `Start` and `Complete` enforce chronological consistency with scheduled and actual times; explicit `RecordCompleted` factory provided.
+- **Cross-cutting enum validation:** Enum definedness checks enforced across all Social Services aggregates (`EncounterType`, `BenefitType`, `EvidenceType`, `EvidenceSensitivityLevel`, `ReferralDestinationType`, `ServiceDeliveryStatus`, `AttendanceStatus`).
 
 Required local validation commands:
 
@@ -44,7 +46,7 @@ dotnet test tests\HF.UnitTests\HF.UnitTests.csproj
 
 Execution result on Windows host with .NET SDK `10.0.403`:
 - `HF.Domain -> HF.Domain.dll`: 0 warnings, 0 errors.
-- `HF.UnitTests`: 172 passed, 0 failed, 0 skipped (including 51 domain tests covering all social service delivery scenarios, error flows, and state preservation).
+- `HF.UnitTests`: 178 passed, 0 failed, 0 skipped (including 57 domain tests covering all social service delivery scenarios, error flows, state preservation, and invariant enforcement).
 
 ## Work
 - [x] Model program/service lines, target audiences, eligibility criteria, locations, and operating periods.

@@ -72,16 +72,91 @@ public sealed class ActivitySession : AggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public static ActivitySession RecordCompleted(
+        string activityId,
+        string programId,
+        DateTime scheduledStart,
+        DateTime scheduledEnd,
+        DateTime actualStart,
+        DateTime actualEnd,
+        string location,
+        string title,
+        string? id = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(activityId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(programId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(location);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+
+        if (scheduledEnd < scheduledStart)
+        {
+            throw new DomainException("session.invalid_schedule", "Scheduled end time cannot be earlier than scheduled start time.");
+        }
+
+        if (actualStart < scheduledStart)
+        {
+            throw new DomainException("session.start_before_scheduled", "Actual start time cannot be earlier than scheduled start time.");
+        }
+
+        if (actualEnd < actualStart)
+        {
+            throw new DomainException("session.invalid_end_time", "Session end time cannot be earlier than start time.");
+        }
+
+        var session = new ActivitySession
+        {
+            Id = id ?? Guid.CreateVersion7().ToString(),
+            ActivityId = activityId.Trim(),
+            ProgramId = programId.Trim(),
+            ScheduledStart = scheduledStart,
+            ScheduledEnd = scheduledEnd,
+            ActualStart = actualStart,
+            ActualEnd = actualEnd,
+            Location = location.Trim(),
+            Title = title.Trim(),
+            Status = ActivitySessionStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        session.AddDomainEvent(new ActivitySessionScheduledEvent(session.Id, session.ActivityId, session.ProgramId, session.ScheduledStart));
+        session.AddDomainEvent(new ActivitySessionStartedEvent(session.Id, session.ActivityId, session.ActualStart.Value));
+        session.AddDomainEvent(new ActivitySessionCompletedEvent(session.Id, session.ActivityId, session.ActualEnd.Value));
+
+        return session;
+    }
+
     public void Start(DateTime actualStart)
     {
+        if (Status == ActivitySessionStatus.InProgress)
+        {
+            throw new DomainException("session.already_started", "The session is already in progress.");
+        }
+
+        if (Status == ActivitySessionStatus.Completed)
+        {
+            throw new DomainException("session.already_completed", "The session is already completed.");
+        }
+
+        if (Status == ActivitySessionStatus.Cancelled)
+        {
+            throw new DomainException("session.cannot_start_cancelled", "A cancelled session cannot be started.");
+        }
+
         if (Status != ActivitySessionStatus.Scheduled && Status != ActivitySessionStatus.Rescheduled)
         {
             throw new DomainException("session.cannot_start", $"Cannot start a session in status '{Status}'.");
         }
 
+        if (actualStart < ScheduledStart)
+        {
+            throw new DomainException("session.start_before_scheduled", "Actual start time cannot be earlier than scheduled start time.");
+        }
+
         Status = ActivitySessionStatus.InProgress;
         ActualStart = actualStart;
         UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new ActivitySessionStartedEvent(Id, ActivityId, ActualStart.Value));
     }
 
     public void Complete(DateTime actualEnd)
@@ -96,8 +171,12 @@ public sealed class ActivitySession : AggregateRoot
             throw new DomainException("session.cannot_complete_cancelled", "A cancelled session cannot be completed.");
         }
 
-        var startReference = ActualStart ?? ScheduledStart;
-        if (actualEnd < startReference)
+        if (Status != ActivitySessionStatus.InProgress)
+        {
+            throw new DomainException("session.not_in_progress", "Cannot complete a session that is not in progress. Start the session first, or use RecordCompleted for retroactive records.");
+        }
+
+        if (actualEnd < ActualStart!.Value)
         {
             throw new DomainException("session.invalid_end_time", "Session end time cannot be earlier than start time.");
         }
@@ -139,9 +218,19 @@ public sealed class ActivitySession : AggregateRoot
         AddDomainEvent(new ActivitySessionCancelledEvent(Id, ActivityId, CancellationReason));
     }
 
-    public void Reschedule(DateTime newStart, DateTime newEnd, string reason, string? rescheduledBy = null)
+    public void Reschedule(DateTime newStart, DateTime newEnd, string reason, string rescheduledBy)
     {
         EnsureNotFinished();
+
+        if (Status == ActivitySessionStatus.InProgress)
+        {
+            throw new DomainException("session.cannot_reschedule_in_progress", "Cannot reschedule a session that is already in progress.");
+        }
+
+        if (string.IsNullOrWhiteSpace(rescheduledBy))
+        {
+            throw new ArgumentException("RescheduledBy cannot be blank.", nameof(rescheduledBy));
+        }
 
         if (newEnd < newStart)
         {
@@ -156,7 +245,7 @@ public sealed class ActivitySession : AggregateRoot
         ScheduledStart = newStart;
         ScheduledEnd = newEnd;
         Status = ActivitySessionStatus.Rescheduled;
-        RescheduledByPersonId = string.IsNullOrWhiteSpace(rescheduledBy) ? null : rescheduledBy.Trim();
+        RescheduledByPersonId = rescheduledBy.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 

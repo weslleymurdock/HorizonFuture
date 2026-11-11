@@ -16,6 +16,12 @@ public sealed record ActivitySessionScheduledEvent(
     DateTime ScheduledStart,
     DateTimeOffset? Timestamp = null) : DomainEvent(Timestamp);
 
+public sealed record ActivitySessionStartedEvent(
+    string SessionId,
+    string ActivityId,
+    DateTime ActualStart,
+    DateTimeOffset? Timestamp = null) : DomainEvent(Timestamp);
+
 public sealed record ActivitySessionCompletedEvent(
     string SessionId,
     string ActivityId,

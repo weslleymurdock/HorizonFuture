@@ -85,13 +85,14 @@ erDiagram
 - Inscrição em programa social representa a formalização de demanda e triagem para um serviço específico.
 - É independente do vínculo institucional `OrganizationalMembership`. Uma pessoa pode ser membro da ONG sem estar inscrita em programas sociais, ou participar de vários programas sem ser associada ou colaboradora.
 - **Ciclo de vida:** `Pending` -> `UnderReview` -> `Approved` / `Waitlisted` / `Rejected` / `Cancelled` / `Withdrawn`.
-- **Aprovação e Elegibilidade:** Somente permitida se o programa estiver `Active`. Se houver avaliação de elegibilidade anexada e o resultado for inelegível (`!IsEligible`), a aprovação é estritamente bloqueada (`DomainException("enrollment.ineligible")`). Se o programa contiver critérios obrigatórios e nenhuma avaliação tiver sido anexada, a aprovação também é rejeitada (`DomainException("enrollment.assessment_required")`).
-- **Motivo obrigatório:** Rejeição, cancelamento, lista de espera e desistência exigem justificativa explícita.
+- **Aprovação e Elegibilidade:** Somente permitida se o programa estiver `Active`. Se houver avaliação de elegibilidade anexada e o resultado for inelegível (`!IsEligible`), a aprovação é estritamente bloqueada (`DomainException("enrollment.ineligible")`). Se o programa contiver critérios obrigatórios e nenhuma avaliação tiver sido anexada, a aprovação também é rejeitada (`DomainException("enrollment.assessment_required")`). Decisões de aprovação rejeitam datas anteriores à inscrição (`enrollment.invalid_decision_date`).
+- **Motivo obrigatório e Proteção Terminal:** Rejeição, cancelamento, lista de espera e desistência exigem justificativa e responsável explícitos. Inscrições em estados terminais (`Rejected`, `Cancelled`, `Withdrawn`) não podem ser reabertas por operações indiretas.
+- **Proteção contra Adulteração Pós-Participação:** Inscrições que já originaram uma participação ativa não podem sofrer cancelamento administrativo ou desistência (`enrollment.cannot_cancel_with_active_participation`, `enrollment.cannot_withdraw_with_active_participation`).
 - **Participação única:** Inscrições aprovadas originam uma `ProgramParticipation` via `CreateParticipation()`. O agregado registra `HasParticipation` e `ParticipationId`, impedindo categoricamente a geração de participações duplicadas para a mesma inscrição (`DomainException("enrollment.participation_already_created")`).
 
 ### 3. `ProgramParticipation`
 - Representa o vínculo fático e contínuo do beneficiário no programa.
-- **Construção protegida:** O construtor é restrito (`internal`) e recebe obrigatoriamente a instância de `ProgramEnrollment`, garantindo que nenhuma participação possa ser criada fora do fluxo legítimo de aprovação de inscrição.
+- **Construção protegida e Integridade de Agregado:** O construtor é restrito (`internal`) e recebe obrigatoriamente a instância de `ProgramEnrollment`. Ele valida status `Approved`, cronologia (`startDate >= enrollment.EnrollmentDate`), não nulidade do autor, e invoca atomicamente `enrollment.RegisterParticipation(Id)`. Qualquer tentativa de contornar `CreateParticipation()` instanciando diretamente o construtor falha se a inscrição já possuir participação ou não estiver aprovada. Se a validação falhar, a inscrição não registra vínculo inconsistente.
 - **Ciclo de vida:** `Active` <-> `Suspended` -> `Completed` / `Terminated`.
 - **Atomicidade e Integridade de Transição:** Todas as validações (argumentos, não nulidade/vazio de responsáveis e justificativas, regras cronológicas e transições de estado permitidas) e a criação da entrada histórica (`ParticipationHistoryEntry`) são executadas **antes** de qualquer mutação de estado ou atualização de datas no agregado. Se qualquer validação falhar, o agregado permanece intacto sem mutações parciais.
 - **Histórico:** Cada mudança de estado registra uma entrada imutável em `History` (`ParticipationHistoryEntry`) com data, motivo e responsável.
@@ -100,44 +101,59 @@ erDiagram
 ### 4. Avaliação de Elegibilidade (`EligibilityAssessmentResult` e Critérios)
 - **Consistência estrita:** O objeto de valor `EligibilityAssessmentResult` valida que o indicador sintético `IsEligible` seja estritamente coerente com o atendimento de todos os critérios obrigatórios (`isEligible == mandatoryCriteriaMet`). Se houver discrepância, é lançada `DomainException("eligibility.contradictory_result")`.
 - **Critérios tipados:** Cada critério avaliado (`CriterionEvaluationResult`) expõe explicitamente se é obrigatório (`IsMandatory`), suportando critérios classificatórios versus eliminatórios sem ambiguidade.
+- **Imutabilidade pós-aprovação:** Inscrições já aprovadas não aceitam substituição ou adição posterior de parecer de elegibilidade (`enrollment.assessment_not_allowed`).
 
 ### 5. `SocialCareEncounter` (Atendimentos)
 - Atendimento individual, familiar, visita domiciliar ou triagem.
 - **Não é prontuário médico:** Não registra diagnósticos clínicos (CID), prescrições de remédios ou laudos médicos.
 - **Notas sensíveis (`SensitiveCareNotes`):** Exigem finalidade operacional legítima declarada e classificação de confidencialidade.
 - **Conclusão e Cancelamento:** A data/hora de atendimento não pode ser futura. Resumo operacional é obrigatório. Cancelamentos e não comparecimentos (`NoShow`) rastreiam explicitamente o responsável pelo registro (`CancelledByPersonId`, `NoShowRecordedByPersonId`). Atendimentos cancelados não admitem inclusão de evidências.
+- **Validação de Enum:** Tipo de atendimento (`EncounterType`) é estritamente validado contra valores indefinidos.
 
 ### 6. `DeliveredBenefit` e `DeliveredService`
 - Diferenciação rigorosa:
-  - Serviço agendado vs serviço prestado.
+  - Serviço agendado/solicitado vs serviço prestado.
   - Benefício concedido (`Granted`) vs benefício despachado (`Dispatched`) vs entregue (`Delivered`).
 - **Quantidade do Benefício:** O objeto de valor `BenefitQuantity` exige valor estritamente positivo (`> 0`) e unidade de medida.
 - **Rastreabilidade e Auditoria de Benefícios:**
+  - `BenefitType`: Validação estrita via `Enum.IsDefined`.
   - `DispatchedDate` e `DispatchedByPersonId`: Registro de despacho com validação de status (`Granted`).
   - `DeliveredDate`, `DeliveredByPersonId` e `ReceivedByPersonId`: Entrega requer data válida (não anterior à concessão ou despacho).
-  - `RevokedDate` e `RevokedByPersonId`: Revogação permitida apenas antes da entrega.
+  - `RevokedDate` e `RevokedByPersonId`: Revogação permitida apenas antes da entrega e não anterior à concessão ou despacho.
   - `ReturnedDate` e `ReturnedByPersonId`: Devolução permitida apenas para benefícios já entregues, com data cronológica coerente e motivo explícito.
 - **Rastreabilidade e Ciclo de Serviços (`DeliveredService`):**
-  - O construtor padrão rejeita status inicial `Completed` ou `Cancelled` (`DomainException("service_delivery.invalid_initial_status")`).
+  - O construtor padrão aceita apenas estados iniciais `Scheduled` ou `Requested`, rejeitando `Completed`, `Cancelled` ou enums indefinidos (`service_delivery.invalid_initial_status`, `service_delivery.invalid_status`).
   - Para registros retroativos de serviços já executados, utiliza-se a fábrica estática explícita `DeliveredService.RecordCompleted(...)`.
-  - Preserva auditoria de agendamento (`ScheduledByPersonId`), cancelamento (`CancelledByPersonId`, `CancelledDate`) e conclusão (`DeliveredByPersonId`).
+  - Conclusão (`MarkAsCompleted`) requer status de origem `Scheduled` ou `Requested` e data não anterior ao agendamento.
+  - Cancelamento (`Cancel`) requer autoria obrigatória (`CancelledByPersonId`), justificativa e status de origem `Scheduled` ou `Requested`.
 - **Rastreabilidade contábil futura:** Preserva propriedades `ProjectId` e `FundingSourceId` para vinculação nos Stages 04 e 05.
 
 ### 7. `SocialReferral` (Encaminhamentos)
 - Encaminhamento interno ou externo (CRAS, CREAS, Conselho Tutelar, Posto de Saúde, Defensoria).
 - **Distinção de serviço:** Um encaminhamento externo **não é um serviço executado pela ONG**. O ciclo só atinge `Completed` quando a instituição de destino confirmar o acolhimento/resultado.
-- **Rastreabilidade completa:** Preserva datas e responsáveis por despacho (`DispatchedDate`, `DispatchedByPersonId`), ciência/acolhimento (`AcknowledgedDate`, `AcknowledgedBy`), desfecho (`OutcomeRecordedByPersonId`) e cancelamento (`CancellationDate`, `CancelledByPersonId`).
+- **Autoria Obrigatória em Todas as Operações:**
+  - `Dispatch(DateOnly dispatchedDate, string dispatchedByPersonId)`
+  - `AcknowledgeReceipt(DateOnly acknowledgedDate, string acknowledgedBy)`
+  - `RecordOutcome(DateOnly outcomeDate, string outcomeNotes, bool isSuccessful, string recordedByPersonId)`
+  - `Cancel(DateOnly cancellationDate, string reason, string cancelledBy)`
+- **Regras Cronológicas:** Despacho, ciência, desfecho e cancelamento não podem anteceder a data do encaminhamento. Se houver despacho, a ciência e o desfecho não podem antecedê-lo. Se houver ciência, o desfecho não pode antecedê-la.
+- **Proteção Terminal:** Encaminhamentos concluídos (`Completed`) ou cancelados (`Cancelled`) não admitem transições subsequentes.
 
 ### 8. `SocialActivity` e `ActivitySession`
 - Atividades agrupam encontros e sessões.
-- **Sessão:** Possui horários de início e término (`ScheduledEnd >= ScheduledStart`), local e lista de facilitadores.
+- **Cancelamento de Atividade:** Exige responsável obrigatório (`CancelledByPersonId`) e justificativa.
+- **Ciclo de Vida e Integridade Temporal da Sessão (`ActivitySession`):**
+  - Estados: `Scheduled` -> `InProgress` -> `Completed`, ou `Rescheduled`, ou `Cancelled`.
+  - Início (`Start`): Requer status `Scheduled` ou `Rescheduled`. O início efetivo (`ActualStart`) não pode anteceder o início agendado (`ScheduledStart`). Sessões já iniciadas ou canceladas não podem ser iniciadas.
+  - Conclusão (`Complete`): Exige estritamente que a sessão esteja `InProgress`. O término efetivo (`ActualEnd`) não pode anteceder `ActualStart`.
+  - Registro Retroativo: Sessões realizadas no passado que necessitem ser inseridas já finalizadas devem utilizar a fábrica explícita e auditável `ActivitySession.RecordCompleted(...)`.
+  - Reagendamento (`Reschedule`): Exige responsável obrigatório (`RescheduledByPersonId`), justificativa e horários coerentes (`newEnd >= newStart`). Bloqueado se a sessão já estiver `InProgress`, `Completed` ou `Cancelled`.
 - **Frequência e Blindagem de Sessão Concluída/Cancelada:**
   - Estados: `Present`, `Absent`, `JustifiedAbsence`, `Excused`, `NotRecorded`.
   - Registros com `NotRecorded` ou valores fora do enum são estritamente rejeitados (`DomainException("attendance.invalid_status")`).
   - Invariante de Justificativa: Ausência justificada (`JustifiedAbsence`) exige obrigatoriamente motivo/justificativa.
   - Sessão Concluída (`Completed`) ou Cancelada (`Cancelled`): Rejeita qualquer inclusão ou alteração de frequência (`session.completed`, `session.cancelled`), selando o histórico contra adulterações posteriores.
   - Duplicidade: Rejeita registro de presença duplicado para a mesma pessoa na mesma sessão. Em caso de falha, os registros existentes são integralmente preservados.
-- **Reagendamento e Cancelamento:** Registram explicitamente responsável e motivo.
 
 ### 9. `SocialEvidence`
 - Armazena exclusivamente **metadados e URIs lógicas**.

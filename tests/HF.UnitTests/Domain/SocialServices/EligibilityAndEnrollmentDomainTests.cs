@@ -296,4 +296,91 @@ public sealed class EligibilityAndEnrollmentDomainTests
         Assert.Equal(EnrollmentStatus.Withdrawn, enrollment.Status);
         Assert.Equal("Conflito com horário escolar", enrollment.WithdrawalReason);
     }
+
+    [Fact]
+    public void Enrollment_StateMachineTransitions_Chronology_AndStatePreservationOnFailure()
+    {
+        var period = new OperatingPeriod(new DateOnly(2026, 1, 1));
+        var program = new SocialProgram("Programa Inclusão", "Crianças", "unit-1", period);
+        program.Activate();
+
+        var enrollmentDate = new DateOnly(2026, 3, 10);
+        var enrollment = new ProgramEnrollment(program, "person-1", enrollmentDate, "staff-1");
+
+        // 1. StartReview from Pending -> UnderReview
+        enrollment.StartReview("revisor-1");
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        // Cannot StartReview again from UnderReview
+        var exReviewAgain = Assert.Throws<DomainException>(() => enrollment.StartReview("revisor-2"));
+        Assert.Equal("enrollment.invalid_transition", exReviewAgain.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        // 2. Decision date earlier than enrollment date rejected across all decision methods
+        var exDecisionBefore = Assert.Throws<DomainException>(() =>
+            enrollment.Approve(program, "coordenador-1", enrollmentDate.AddDays(-1)));
+        Assert.Equal("enrollment.invalid_decision_date", exDecisionBefore.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+        Assert.Null(enrollment.DecisionDate);
+
+        var exWaitlistBefore = Assert.Throws<DomainException>(() =>
+            enrollment.Waitlist("coordenador-1", enrollmentDate.AddDays(-2), "Motivo"));
+        Assert.Equal("enrollment.invalid_decision_date", exWaitlistBefore.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        var exRejectBefore = Assert.Throws<DomainException>(() =>
+            enrollment.Reject("coordenador-1", enrollmentDate.AddDays(-3), "Motivo"));
+        Assert.Equal("enrollment.invalid_decision_date", exRejectBefore.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        var exCancelBefore = Assert.Throws<DomainException>(() =>
+            enrollment.Cancel("coordenador-1", enrollmentDate.AddDays(-4), "Motivo"));
+        Assert.Equal("enrollment.invalid_cancellation_date", exCancelBefore.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        var exWithdrawBefore = Assert.Throws<DomainException>(() =>
+            enrollment.Withdraw("responsavel", enrollmentDate.AddDays(-5), "Motivo"));
+        Assert.Equal("enrollment.invalid_withdrawal_date", exWithdrawBefore.Code);
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+
+        // 3. Attach assessment while in UnderReview
+        var assessment = EligibilityAssessmentResult.Create([], enrollmentDate, "avaliador-1");
+        enrollment.AttachAssessment(assessment);
+        Assert.Same(assessment, enrollment.AssessmentResult);
+
+        // 4. Approve successfully
+        enrollment.Approve(program, "diretor-1", enrollmentDate.AddDays(2));
+        Assert.Equal(EnrollmentStatus.Approved, enrollment.Status);
+        Assert.Equal("diretor-1", enrollment.DecidedBy);
+        Assert.Equal(enrollmentDate.AddDays(2), enrollment.DecisionDate);
+
+        // 5. Cannot attach new assessment to an approved enrollment
+        var newAssessment = EligibilityAssessmentResult.Create([], enrollmentDate.AddDays(3), "avaliador-2");
+        var exAttachApproved = Assert.Throws<DomainException>(() => enrollment.AttachAssessment(newAssessment));
+        Assert.Equal("enrollment.assessment_not_allowed", exAttachApproved.Code);
+        Assert.Same(assessment, enrollment.AssessmentResult); // Preserved
+
+        // 6. Cannot waitlist or reject an approved enrollment
+        var exWaitlistApproved = Assert.Throws<DomainException>(() =>
+            enrollment.Waitlist("coordenador-1", enrollmentDate.AddDays(3), "Tentar lista"));
+        Assert.Equal("enrollment.invalid_transition", exWaitlistApproved.Code);
+
+        var exRejectApproved = Assert.Throws<DomainException>(() =>
+            enrollment.Reject("coordenador-1", enrollmentDate.AddDays(3), "Tentar rejeitar"));
+        Assert.Equal("enrollment.cannot_reject_approved", exRejectApproved.Code);
+
+        // 7. Active participation protects enrollment from administrative cancellation and withdrawal
+        enrollment.CreateParticipation(enrollmentDate.AddDays(5), "staff-1");
+        Assert.True(enrollment.HasParticipation);
+
+        var exCancelWithParticipation = Assert.Throws<DomainException>(() =>
+            enrollment.Cancel("coordenador-1", enrollmentDate.AddDays(6), "Tentativa cancelamento"));
+        Assert.Equal("enrollment.cannot_cancel_with_active_participation", exCancelWithParticipation.Code);
+        Assert.Equal(EnrollmentStatus.Approved, enrollment.Status);
+
+        var exWithdrawWithParticipation = Assert.Throws<DomainException>(() =>
+            enrollment.Withdraw("familiar-1", enrollmentDate.AddDays(6), "Tentativa desistencia"));
+        Assert.Equal("enrollment.cannot_withdraw_with_active_participation", exWithdrawWithParticipation.Code);
+        Assert.Equal(EnrollmentStatus.Approved, enrollment.Status);
+    }
 }

@@ -25,6 +25,16 @@ public sealed class SocialEvidence : AggregateRoot
         ArgumentException.ThrowIfNullOrWhiteSpace(contentType);
         ArgumentException.ThrowIfNullOrWhiteSpace(uploadedByPersonId);
 
+        if (!Enum.IsDefined(evidenceType))
+        {
+            throw new DomainException("evidence.invalid_type", "The specified evidence type is invalid.");
+        }
+
+        if (!Enum.IsDefined(sensitivityLevel))
+        {
+            throw new DomainException("evidence.invalid_sensitivity_level", "The specified sensitivity level is invalid.");
+        }
+
         if (fileSizeBytes <= 0)
         {
             throw new DomainException("evidence.invalid_size", "File size in bytes must be positive.");
@@ -67,6 +77,11 @@ public sealed class SocialEvidence : AggregateRoot
 
     public void UpdateSensitivity(EvidenceSensitivityLevel newLevel)
     {
+        if (!Enum.IsDefined(newLevel))
+        {
+            throw new DomainException("evidence.invalid_sensitivity_level", "The specified sensitivity level is invalid.");
+        }
+
         SensitivityLevel = newLevel;
         UpdatedAt = DateTime.UtcNow;
     }

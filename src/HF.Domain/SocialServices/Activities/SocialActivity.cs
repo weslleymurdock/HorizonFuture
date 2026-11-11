@@ -33,6 +33,7 @@ public sealed class SocialActivity : AggregateRoot
     public string? Objectives { get; private set; }
     public ActivityStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public string? CancelledByPersonId { get; private set; }
 
     public void Activate()
     {
@@ -66,7 +67,7 @@ public sealed class SocialActivity : AggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Cancel(string reason)
+    public void Cancel(string reason, string cancelledBy)
     {
         if (Status == ActivityStatus.Cancelled)
         {
@@ -83,8 +84,14 @@ public sealed class SocialActivity : AggregateRoot
             throw new DomainException("activity.cancellation_reason_required", "A reason is required to cancel an activity.");
         }
 
+        if (string.IsNullOrWhiteSpace(cancelledBy))
+        {
+            throw new ArgumentException("CancelledBy cannot be blank.", nameof(cancelledBy));
+        }
+
         Status = ActivityStatus.Cancelled;
         CancellationReason = reason.Trim();
+        CancelledByPersonId = cancelledBy.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 

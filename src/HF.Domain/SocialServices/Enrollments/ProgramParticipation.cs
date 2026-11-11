@@ -27,12 +27,25 @@ public sealed class ProgramParticipation : AggregateRoot
             throw new DomainException("enrollment.not_approved", "Only an approved enrollment can initiate active participation.");
         }
 
+        if (enrollment.HasParticipation)
+        {
+            throw new DomainException("enrollment.participation_already_created", "A participation has already been created for this enrollment.");
+        }
+
+        if (startDate < enrollment.EnrollmentDate)
+        {
+            throw new DomainException("participation.start_before_enrollment", "Participation start date cannot be earlier than enrollment submission date.");
+        }
+
         var initialEntry = new ParticipationHistoryEntry(
             startDate,
             ParticipationStatus.Active,
             ParticipationStatus.Active,
             "Initial participation started",
             startedBy.Trim());
+
+        // Atomically bind to enrollment. If this throws, this instance is not constructed.
+        enrollment.RegisterParticipation(Id);
 
         ProgramId = enrollment.ProgramId;
         BeneficiaryPersonId = enrollment.BeneficiaryPersonId;

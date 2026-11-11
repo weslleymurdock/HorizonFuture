@@ -52,30 +52,80 @@ public sealed class ProgramParticipationDomainTests
     {
         var (_, enrollment) = CreateApprovedEnrollment();
 
-        // 1. First creation is allowed
-        var participation1 = enrollment.CreateParticipation(new DateOnly(2026, 2, 10), "staff-1");
+        // 1. First creation is allowed and retains enrollment origin data
+        var startDate = new DateOnly(2026, 2, 10);
+        var participation1 = enrollment.CreateParticipation(startDate, "staff-1");
         Assert.NotNull(participation1);
         Assert.Equal(enrollment.Id, participation1.EnrollmentId);
+        Assert.Equal(enrollment.ProgramId, participation1.ProgramId);
+        Assert.Equal(enrollment.BeneficiaryPersonId, participation1.BeneficiaryPersonId);
+        Assert.Equal(startDate, participation1.StartDate);
         Assert.True(enrollment.HasParticipation);
         Assert.Equal(participation1.Id, enrollment.ParticipationId);
 
-        // 2. Second creation is rejected
+        // 2. Second creation via enrollment is rejected
         var exDuplicate = Assert.Throws<DomainException>(() =>
             enrollment.CreateParticipation(new DateOnly(2026, 2, 11), "staff-2"));
         Assert.Equal("enrollment.participation_already_created", exDuplicate.Code);
 
-        // 3. Rejection does not improperly alter the enrollment state
+        // 3. Direct constructor bypass also rejects duplicate participation
+        var exDirectDuplicate = Assert.Throws<DomainException>(() =>
+            new ProgramParticipation(enrollment, new DateOnly(2026, 2, 12), "staff-3"));
+        Assert.Equal("enrollment.participation_already_created", exDirectDuplicate.Code);
+
+        // 4. Rejection does not alter the enrollment state or existing participation reference
         Assert.Equal(EnrollmentStatus.Approved, enrollment.Status);
         Assert.Equal(participation1.Id, enrollment.ParticipationId);
+        Assert.True(enrollment.HasParticipation);
 
-        // 4. Cannot create participation from non-approved enrollment
+        // 5. Cannot create participation from non-approved enrollments
         var period = new OperatingPeriod(new DateOnly(2026, 1, 1));
         var program = new SocialProgram("Programa 2", "Público", "unit-1", period);
         program.Activate();
+
+        // 5a. Pending enrollment rejected
         var pendingEnrollment = new ProgramEnrollment(program, "person-2", new DateOnly(2026, 2, 1), "staff-1");
-        var exNotApproved = Assert.Throws<DomainException>(() =>
+        var exPending = Assert.Throws<DomainException>(() =>
             pendingEnrollment.CreateParticipation(new DateOnly(2026, 2, 1), "staff-1"));
-        Assert.Equal("enrollment.not_approved", exNotApproved.Code);
+        Assert.Equal("enrollment.not_approved", exPending.Code);
+
+        var exPendingDirect = Assert.Throws<DomainException>(() =>
+            new ProgramParticipation(pendingEnrollment, new DateOnly(2026, 2, 1), "staff-1"));
+        Assert.Equal("enrollment.not_approved", exPendingDirect.Code);
+
+        // 5b. Rejected enrollment rejected
+        var rejectedEnrollment = new ProgramEnrollment(program, "person-3", new DateOnly(2026, 2, 1), "staff-1");
+        rejectedEnrollment.Reject("coordenador-1", new DateOnly(2026, 2, 2), "Fora do público prioritário");
+        var exRejected = Assert.Throws<DomainException>(() =>
+            rejectedEnrollment.CreateParticipation(new DateOnly(2026, 2, 3), "staff-1"));
+        Assert.Equal("enrollment.not_approved", exRejected.Code);
+
+        var exRejectedDirect = Assert.Throws<DomainException>(() =>
+            new ProgramParticipation(rejectedEnrollment, new DateOnly(2026, 2, 3), "staff-1"));
+        Assert.Equal("enrollment.not_approved", exRejectedDirect.Code);
+
+        // 6. Creation failure does not leave ParticipationId inconsistent
+        var (programClean, cleanEnrollment) = CreateApprovedEnrollment("prog-clean", "person-clean");
+        Assert.False(cleanEnrollment.HasParticipation);
+        Assert.Null(cleanEnrollment.ParticipationId);
+
+        // Failure with invalid author
+        Assert.Throws<ArgumentException>(() =>
+            cleanEnrollment.CreateParticipation(new DateOnly(2026, 2, 10), "   "));
+        Assert.False(cleanEnrollment.HasParticipation);
+        Assert.Null(cleanEnrollment.ParticipationId);
+
+        // Failure with date earlier than enrollment date (2026-02-01)
+        var exDateBefore = Assert.Throws<DomainException>(() =>
+            cleanEnrollment.CreateParticipation(new DateOnly(2026, 1, 15), "staff-1"));
+        Assert.Equal("participation.start_before_enrollment", exDateBefore.Code);
+        Assert.False(cleanEnrollment.HasParticipation);
+        Assert.Null(cleanEnrollment.ParticipationId);
+
+        // Now valid creation succeeds cleanly
+        var validParticipation = cleanEnrollment.CreateParticipation(new DateOnly(2026, 2, 5), "staff-1");
+        Assert.True(cleanEnrollment.HasParticipation);
+        Assert.Equal(validParticipation.Id, cleanEnrollment.ParticipationId);
     }
 
     [Fact]

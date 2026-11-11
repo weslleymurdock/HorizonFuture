@@ -25,6 +25,11 @@ public sealed class SocialReferral : AggregateRoot
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         ArgumentException.ThrowIfNullOrWhiteSpace(referredByPersonId);
 
+        if (!Enum.IsDefined(destinationType))
+        {
+            throw new DomainException("referral.invalid_destination_type", "The specified destination type is invalid.");
+        }
+
         BeneficiaryPersonId = beneficiaryPersonId.Trim();
         DestinationType = destinationType;
         DestinationName = destinationName.Trim();
@@ -65,40 +70,73 @@ public sealed class SocialReferral : AggregateRoot
     public string? CancelledByPersonId { get; private set; }
     public DateOnly? CancellationDate { get; private set; }
 
-    public void Dispatch(DateOnly? dispatchedDate = null, string? dispatchedByPersonId = null)
+    public void Dispatch(DateOnly dispatchedDate, string dispatchedByPersonId)
     {
+        if (Status == ReferralStatus.Completed)
+        {
+            throw new DomainException("referral.cannot_dispatch_completed", "A completed referral cannot be dispatched.");
+        }
+
+        if (Status == ReferralStatus.Cancelled)
+        {
+            throw new DomainException("referral.cannot_dispatch_cancelled", "A cancelled referral cannot be dispatched.");
+        }
+
         if (Status != ReferralStatus.Pending)
         {
             throw new DomainException("referral.invalid_transition", $"Cannot dispatch a referral in status '{Status}'.");
         }
 
-        var effectiveDispatchedDate = dispatchedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        if (effectiveDispatchedDate < ReferralDate)
+        if (string.IsNullOrWhiteSpace(dispatchedByPersonId))
+        {
+            throw new ArgumentException("DispatchedByPersonId cannot be blank.", nameof(dispatchedByPersonId));
+        }
+
+        if (dispatchedDate < ReferralDate)
         {
             throw new DomainException("referral.invalid_dispatch_date", "Dispatch date cannot be earlier than referral date.");
         }
 
-        DispatchedDate = effectiveDispatchedDate;
-        DispatchedByPersonId = string.IsNullOrWhiteSpace(dispatchedByPersonId) ? null : dispatchedByPersonId.Trim();
+        DispatchedDate = dispatchedDate;
+        DispatchedByPersonId = dispatchedByPersonId.Trim();
         Status = ReferralStatus.Dispatched;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AcknowledgeReceipt(DateOnly? acknowledgedDate = null, string? acknowledgedBy = null)
+    public void AcknowledgeReceipt(DateOnly acknowledgedDate, string acknowledgedBy)
     {
+        if (Status == ReferralStatus.Completed)
+        {
+            throw new DomainException("referral.cannot_acknowledge_completed", "A completed referral cannot be acknowledged.");
+        }
+
+        if (Status == ReferralStatus.Cancelled)
+        {
+            throw new DomainException("referral.cannot_acknowledge_cancelled", "A cancelled referral cannot be acknowledged.");
+        }
+
         if (Status != ReferralStatus.Pending && Status != ReferralStatus.Dispatched)
         {
             throw new DomainException("referral.invalid_transition", $"Cannot acknowledge referral in status '{Status}'.");
         }
 
-        var effectiveDate = acknowledgedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        if (DispatchedDate.HasValue && effectiveDate < DispatchedDate.Value)
+        if (string.IsNullOrWhiteSpace(acknowledgedBy))
+        {
+            throw new ArgumentException("AcknowledgedBy cannot be blank.", nameof(acknowledgedBy));
+        }
+
+        if (acknowledgedDate < ReferralDate)
+        {
+            throw new DomainException("referral.invalid_acknowledgement_date", "Acknowledgement date cannot be earlier than referral date.");
+        }
+
+        if (DispatchedDate.HasValue && acknowledgedDate < DispatchedDate.Value)
         {
             throw new DomainException("referral.invalid_acknowledgement_date", "Acknowledgement date cannot be earlier than dispatch date.");
         }
 
-        AcknowledgedDate = effectiveDate;
-        AcknowledgedBy = string.IsNullOrWhiteSpace(acknowledgedBy) ? null : acknowledgedBy.Trim();
+        AcknowledgedDate = acknowledgedDate;
+        AcknowledgedBy = acknowledgedBy.Trim();
         Status = ReferralStatus.Acknowledged;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -107,7 +145,7 @@ public sealed class SocialReferral : AggregateRoot
         DateOnly outcomeDate,
         string outcomeNotes,
         bool isSuccessful,
-        string? recordedByPersonId = null)
+        string recordedByPersonId)
     {
         if (Status == ReferralStatus.Completed)
         {
@@ -119,9 +157,9 @@ public sealed class SocialReferral : AggregateRoot
             throw new DomainException("referral.cannot_complete_cancelled", "A cancelled referral cannot receive an outcome.");
         }
 
-        if (outcomeDate < ReferralDate)
+        if (string.IsNullOrWhiteSpace(recordedByPersonId))
         {
-            throw new DomainException("referral.invalid_outcome_date", "Outcome date cannot be earlier than referral date.");
+            throw new ArgumentException("RecordedByPersonId cannot be blank.", nameof(recordedByPersonId));
         }
 
         if (string.IsNullOrWhiteSpace(outcomeNotes))
@@ -129,17 +167,32 @@ public sealed class SocialReferral : AggregateRoot
             throw new DomainException("referral.outcome_notes_required", "Notes describing the confirmed outcome are required.");
         }
 
+        if (outcomeDate < ReferralDate)
+        {
+            throw new DomainException("referral.invalid_outcome_date", "Outcome date cannot be earlier than referral date.");
+        }
+
+        if (DispatchedDate.HasValue && outcomeDate < DispatchedDate.Value)
+        {
+            throw new DomainException("referral.invalid_outcome_date", "Outcome date cannot be earlier than dispatch date.");
+        }
+
+        if (AcknowledgedDate.HasValue && outcomeDate < AcknowledgedDate.Value)
+        {
+            throw new DomainException("referral.invalid_outcome_date", "Outcome date cannot be earlier than acknowledgement date.");
+        }
+
         Status = ReferralStatus.Completed;
         OutcomeDate = outcomeDate;
         OutcomeNotes = outcomeNotes.Trim();
         IsSuccessful = isSuccessful;
-        OutcomeRecordedByPersonId = string.IsNullOrWhiteSpace(recordedByPersonId) ? null : recordedByPersonId.Trim();
+        OutcomeRecordedByPersonId = recordedByPersonId.Trim();
         UpdatedAt = DateTime.UtcNow;
 
         AddDomainEvent(new SocialReferralCompletedEvent(Id, BeneficiaryPersonId, OutcomeDate.Value, IsSuccessful.Value));
     }
 
-    public void Cancel(string reason, string? cancelledBy = null, DateOnly? cancellationDate = null)
+    public void Cancel(DateOnly cancellationDate, string reason, string cancelledBy)
     {
         if (Status == ReferralStatus.Cancelled)
         {
@@ -156,10 +209,20 @@ public sealed class SocialReferral : AggregateRoot
             throw new DomainException("referral.cancellation_reason_required", "A reason is required to cancel a referral.");
         }
 
+        if (string.IsNullOrWhiteSpace(cancelledBy))
+        {
+            throw new ArgumentException("CancelledBy cannot be blank.", nameof(cancelledBy));
+        }
+
+        if (cancellationDate < ReferralDate)
+        {
+            throw new DomainException("referral.invalid_cancellation_date", "Cancellation date cannot be earlier than referral date.");
+        }
+
         Status = ReferralStatus.Cancelled;
         CancellationReason = reason.Trim();
-        CancelledByPersonId = string.IsNullOrWhiteSpace(cancelledBy) ? null : cancelledBy.Trim();
-        CancellationDate = cancellationDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        CancelledByPersonId = cancelledBy.Trim();
+        CancellationDate = cancellationDate;
         UpdatedAt = DateTime.UtcNow;
 
         AddDomainEvent(new SocialReferralCancelledEvent(Id, CancellationReason));

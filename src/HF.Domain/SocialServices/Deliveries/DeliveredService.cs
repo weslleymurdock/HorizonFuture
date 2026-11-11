@@ -26,7 +26,12 @@ public sealed class DeliveredService : AggregateRoot
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceDefinitionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(scheduledByPersonId);
 
-        if (initialStatus is ServiceDeliveryStatus.Completed or ServiceDeliveryStatus.Cancelled)
+        if (!Enum.IsDefined(initialStatus))
+        {
+            throw new DomainException("service_delivery.invalid_status", "The specified initial service delivery status is invalid.");
+        }
+
+        if (initialStatus is not (ServiceDeliveryStatus.Requested or ServiceDeliveryStatus.Scheduled))
         {
             throw new DomainException(
                 "service_delivery.invalid_initial_status",
@@ -110,6 +115,11 @@ public sealed class DeliveredService : AggregateRoot
             throw new DomainException("service_delivery.cannot_complete_cancelled", "A cancelled service delivery cannot be completed.");
         }
 
+        if (Status != ServiceDeliveryStatus.Scheduled && Status != ServiceDeliveryStatus.Requested)
+        {
+            throw new DomainException("service_delivery.invalid_transition", $"Cannot complete a service delivery in status '{Status}'.");
+        }
+
         if (string.IsNullOrWhiteSpace(deliveredByPersonId))
         {
             throw new ArgumentException("DeliveredByPersonId cannot be blank.", nameof(deliveredByPersonId));
@@ -140,6 +150,11 @@ public sealed class DeliveredService : AggregateRoot
             throw new DomainException("service_delivery.cannot_cancel_completed", "A completed service delivery cannot be cancelled.");
         }
 
+        if (Status != ServiceDeliveryStatus.Scheduled && Status != ServiceDeliveryStatus.Requested)
+        {
+            throw new DomainException("service_delivery.invalid_transition", $"Cannot cancel a service delivery in status '{Status}'.");
+        }
+
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new DomainException("service_delivery.cancellation_reason_required", "A reason is required to cancel a service delivery.");
@@ -156,6 +171,9 @@ public sealed class DeliveredService : AggregateRoot
         CancelledDate = cancellationDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public void Cancel(DateOnly cancellationDate, string reason, string cancelledBy) =>
+        Cancel(reason, cancelledBy, cancellationDate);
 
     public void AttachEvidence(string evidenceId)
     {

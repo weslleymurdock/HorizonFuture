@@ -248,4 +248,87 @@ public sealed class DeliveredServiceAndBenefitDomainTests
             service.AttachEvidence("ev-001"));
         Assert.Equal("service_delivery.cannot_modify_cancelled", exEvidence.Code);
     }
+
+    [Fact]
+    public void DeliveredService_TransitionsAndCronology_EnforcesInvariantsAndPreservesStateOnFailure()
+    {
+        var scheduledDate = new DateOnly(2026, 4, 15);
+        var service = new DeliveredService("person-1", "prog-1", "OFICINA_ARTE", "staff-1", scheduledDate);
+
+        // 1. Invalid enum rejected in constructor
+        var exInvalidEnum = Assert.Throws<DomainException>(() =>
+            new DeliveredService("person-1", "prog-1", "SERV-1", "staff-1", scheduledDate, initialStatus: (ServiceDeliveryStatus)999));
+        Assert.Equal("service_delivery.invalid_status", exInvalidEnum.Code);
+
+        // 2. Initial Completed/Cancelled rejected in constructor
+        var exInitialCompleted = Assert.Throws<DomainException>(() =>
+            new DeliveredService("person-1", "prog-1", "SERV-1", "staff-1", scheduledDate, initialStatus: ServiceDeliveryStatus.Completed));
+        Assert.Equal("service_delivery.invalid_initial_status", exInitialCompleted.Code);
+
+        var exInitialCancelled = Assert.Throws<DomainException>(() =>
+            new DeliveredService("person-1", "prog-1", "SERV-1", "staff-1", scheduledDate, initialStatus: ServiceDeliveryStatus.Cancelled));
+        Assert.Equal("service_delivery.invalid_initial_status", exInitialCancelled.Code);
+
+        // 3. MarkAsCompleted invalid arguments and chronology
+        Assert.Throws<ArgumentException>(() => service.MarkAsCompleted(scheduledDate, "   "));
+        var exCompleteBeforeScheduled = Assert.Throws<DomainException>(() =>
+            service.MarkAsCompleted(scheduledDate.AddDays(-1), "staff-1"));
+        Assert.Equal("service_delivery.invalid_completion_date", exCompleteBeforeScheduled.Code);
+
+        // State preserved
+        Assert.Equal(ServiceDeliveryStatus.Scheduled, service.Status);
+        Assert.Null(service.DeliveredByPersonId);
+
+        // 4. Cancel invalid arguments
+        Assert.Throws<ArgumentException>(() => service.Cancel("Motivo", "   "));
+        var exCancelNoReason = Assert.Throws<DomainException>(() => service.Cancel("   ", "staff-1"));
+        Assert.Equal("service_delivery.cancellation_reason_required", exCancelNoReason.Code);
+
+        // State preserved
+        Assert.Equal(ServiceDeliveryStatus.Scheduled, service.Status);
+        Assert.Null(service.CancelledByPersonId);
+        Assert.Null(service.CancellationReason);
+
+        // 5. Valid cancel (even in advance of scheduled date) and terminal protection
+        var cancelDate = scheduledDate.AddDays(-2);
+        service.Cancel("Cancelado por motivo legítimo", "coordenador-1", cancelDate);
+        Assert.Equal(ServiceDeliveryStatus.Cancelled, service.Status);
+        Assert.Equal(cancelDate, service.CancelledDate);
+
+        var exCompleteCancelled = Assert.Throws<DomainException>(() =>
+            service.MarkAsCompleted(scheduledDate, "staff-1"));
+        Assert.Equal("service_delivery.cannot_complete_cancelled", exCompleteCancelled.Code);
+
+        var exCancelAgain = Assert.Throws<DomainException>(() =>
+            service.Cancel(scheduledDate, "Outro cancelamento", "coordenador-1"));
+        Assert.Equal("service_delivery.already_cancelled", exCancelAgain.Code);
+    }
+
+    [Fact]
+    public void DeliveredBenefit_EnforcesEnumAndDispatchToRevocationChronology()
+    {
+        // 1. Invalid benefit type rejected
+        var exInvalidType = Assert.Throws<DomainException>(() =>
+            new DeliveredBenefit("child-1", "prog-1", (BenefitType)999, "Desc", new BenefitQuantity(1, "un"), new DateOnly(2026, 3, 1), "staff-1"));
+        Assert.Equal("benefit.invalid_type", exInvalidType.Code);
+
+        // 2. Revocation before dispatch date is rejected when dispatched
+        var grantDate = new DateOnly(2026, 3, 1);
+        var dispatchDate = new DateOnly(2026, 3, 5);
+        var benefit = new DeliveredBenefit("child-1", "prog-1", BenefitType.SchoolSupplies, "Kit escolar", new BenefitQuantity(1, "kit"), grantDate, "staff-1");
+        benefit.Dispatch(dispatchDate, "motorista-1");
+
+        var exRevokeBeforeDispatch = Assert.Throws<DomainException>(() =>
+            benefit.Revoke("Revogado por erro de cadastro", "staff-1", dispatchDate.AddDays(-1)));
+        Assert.Equal("benefit.invalid_revocation_date", exRevokeBeforeDispatch.Code);
+
+        // State preserved
+        Assert.Equal(BenefitDeliveryStatus.Dispatched, benefit.Status);
+        Assert.Null(benefit.RevokedDate);
+
+        // Valid revocation
+        benefit.Revoke("Revogado por duplicidade", "staff-1", dispatchDate.AddDays(1));
+        Assert.Equal(BenefitDeliveryStatus.Revoked, benefit.Status);
+        Assert.Equal(dispatchDate.AddDays(1), benefit.RevokedDate);
+    }
 }

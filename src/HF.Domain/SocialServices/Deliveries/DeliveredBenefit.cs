@@ -26,6 +26,11 @@ public sealed class DeliveredBenefit : AggregateRoot
         ArgumentNullException.ThrowIfNull(quantity);
         ArgumentException.ThrowIfNullOrWhiteSpace(grantedByPersonId);
 
+        if (!Enum.IsDefined(benefitType))
+        {
+            throw new DomainException("benefit.invalid_type", "The specified benefit type is invalid.");
+        }
+
         BeneficiaryPersonId = beneficiaryPersonId.Trim();
         ProgramId = programId.Trim();
         BenefitType = benefitType;
@@ -168,6 +173,11 @@ public sealed class DeliveredBenefit : AggregateRoot
         if (effectiveRevokedDate < GrantedDate)
         {
             throw new DomainException("benefit.invalid_revocation_date", "Revocation date cannot be earlier than grant date.");
+        }
+
+        if (DispatchedDate.HasValue && effectiveRevokedDate < DispatchedDate.Value)
+        {
+            throw new DomainException("benefit.invalid_revocation_date", "Revocation date cannot be earlier than dispatch date.");
         }
 
         Status = BenefitDeliveryStatus.Revoked;

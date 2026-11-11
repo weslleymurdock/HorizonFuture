@@ -111,6 +111,11 @@ public sealed class SocialCareEncounterDomainTests
         var exAttach = Assert.Throws<DomainException>(() =>
             encounter.AttachEvidence("ev-01"));
         Assert.Equal("encounter.cannot_modify_cancelled", exAttach.Code);
+
+        // Invalid enum in constructor rejected
+        var exInvalidType = Assert.Throws<DomainException>(() =>
+            new SocialCareEncounter("person-1", "unit-1", "staff-1", (EncounterType)999, DateTime.UtcNow.AddDays(1)));
+        Assert.Equal("encounter.invalid_type", exInvalidType.Code);
     }
 
     [Fact]

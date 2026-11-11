@@ -24,6 +24,11 @@ public sealed class SocialCareEncounter : AggregateRoot
         ArgumentException.ThrowIfNullOrWhiteSpace(organizationalUnitId);
         ArgumentException.ThrowIfNullOrWhiteSpace(attendantPersonId);
 
+        if (!Enum.IsDefined(encounterType))
+        {
+            throw new DomainException("encounter.invalid_type", "The specified encounter type is invalid.");
+        }
+
         BeneficiaryPersonId = beneficiaryPersonId.Trim();
         OrganizationalUnitId = organizationalUnitId.Trim();
         AttendantPersonId = attendantPersonId.Trim();

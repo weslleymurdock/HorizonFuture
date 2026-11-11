@@ -69,7 +69,12 @@ public sealed class ProgramEnrollment : AggregateRoot
         EnsureNotTerminal();
         ArgumentNullException.ThrowIfNull(assessment);
 
-        if (Status != EnrollmentStatus.Pending && Status != EnrollmentStatus.UnderReview)
+        if (Status == EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.assessment_not_allowed", "Cannot attach an assessment to an approved enrollment.");
+        }
+
+        if (Status != EnrollmentStatus.Pending && Status != EnrollmentStatus.UnderReview && Status != EnrollmentStatus.Waitlisted)
         {
             throw new DomainException("enrollment.assessment_not_allowed", $"Cannot attach an assessment to an enrollment in status '{Status}'.");
         }
@@ -89,6 +94,11 @@ public sealed class ProgramEnrollment : AggregateRoot
         if (string.IsNullOrWhiteSpace(approvedBy))
         {
             throw new ArgumentException("ApprovedBy cannot be blank.", nameof(approvedBy));
+        }
+
+        if (decisionDate < EnrollmentDate)
+        {
+            throw new DomainException("enrollment.invalid_decision_date", "Decision date cannot be earlier than enrollment date.");
         }
 
         if (program.Id != ProgramId)
@@ -143,9 +153,19 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new DomainException("enrollment.waitlist_reason_required", "A reason is required to waitlist an enrollment.");
         }
 
+        if (decisionDate < EnrollmentDate)
+        {
+            throw new DomainException("enrollment.invalid_decision_date", "Decision date cannot be earlier than enrollment date.");
+        }
+
         if (Status == EnrollmentStatus.Waitlisted)
         {
             throw new DomainException("enrollment.already_waitlisted", "The enrollment is already waitlisted.");
+        }
+
+        if (Status == EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.invalid_transition", "Cannot waitlist an approved enrollment.");
         }
 
         if (Status != EnrollmentStatus.Pending && Status != EnrollmentStatus.UnderReview)
@@ -170,9 +190,19 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new DomainException("enrollment.rejection_reason_required", "A reason is required to reject an enrollment.");
         }
 
+        if (decisionDate < EnrollmentDate)
+        {
+            throw new DomainException("enrollment.invalid_decision_date", "Decision date cannot be earlier than enrollment date.");
+        }
+
         if (Status == EnrollmentStatus.Approved)
         {
-            throw new DomainException("enrollment.cannot_reject_approved", "An approved enrollment cannot be rejected directly. Cancel it instead.");
+            throw new DomainException("enrollment.cannot_reject_approved", "An approved enrollment cannot be rejected directly. Cancel or withdraw it instead.");
+        }
+
+        if (Status != EnrollmentStatus.Pending && Status != EnrollmentStatus.UnderReview && Status != EnrollmentStatus.Waitlisted)
+        {
+            throw new DomainException("enrollment.invalid_transition", $"Cannot reject an enrollment in status '{Status}'.");
         }
 
         Status = EnrollmentStatus.Rejected;
@@ -193,6 +223,24 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new DomainException("enrollment.cancellation_reason_required", "A reason is required to cancel an enrollment.");
         }
 
+        if (cancellationDate < EnrollmentDate)
+        {
+            throw new DomainException("enrollment.invalid_cancellation_date", "Cancellation date cannot be earlier than enrollment date.");
+        }
+
+        if (HasParticipation)
+        {
+            throw new DomainException("enrollment.cannot_cancel_with_active_participation", "Cannot cancel an enrollment that has an active participation.");
+        }
+
+        if (Status != EnrollmentStatus.Pending &&
+            Status != EnrollmentStatus.UnderReview &&
+            Status != EnrollmentStatus.Waitlisted &&
+            Status != EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.invalid_transition", $"Cannot cancel an enrollment in status '{Status}'.");
+        }
+
         Status = EnrollmentStatus.Cancelled;
         DecisionDate = cancellationDate;
         DecidedBy = cancelledBy.Trim();
@@ -209,6 +257,24 @@ public sealed class ProgramEnrollment : AggregateRoot
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new DomainException("enrollment.withdrawal_reason_required", "A reason is required for candidate withdrawal.");
+        }
+
+        if (withdrawalDate < EnrollmentDate)
+        {
+            throw new DomainException("enrollment.invalid_withdrawal_date", "Withdrawal date cannot be earlier than enrollment date.");
+        }
+
+        if (HasParticipation)
+        {
+            throw new DomainException("enrollment.cannot_withdraw_with_active_participation", "Cannot withdraw an enrollment that has an active participation.");
+        }
+
+        if (Status != EnrollmentStatus.Pending &&
+            Status != EnrollmentStatus.UnderReview &&
+            Status != EnrollmentStatus.Waitlisted &&
+            Status != EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.invalid_transition", $"Cannot withdraw an enrollment in status '{Status}'.");
         }
 
         Status = EnrollmentStatus.Withdrawn;
@@ -237,11 +303,25 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new ArgumentException("StartedBy cannot be blank.", nameof(startedBy));
         }
 
-        var participation = new ProgramParticipation(this, startDate, startedBy);
-        ParticipationId = participation.Id;
-        UpdatedAt = DateTime.UtcNow;
+        return new ProgramParticipation(this, startDate, startedBy);
+    }
 
-        return participation;
+    internal void RegisterParticipation(string participationId)
+    {
+        if (Status != EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.not_approved", "Only an approved enrollment can initiate active participation.");
+        }
+
+        if (HasParticipation)
+        {
+            throw new DomainException("enrollment.participation_already_created", "A participation has already been created for this enrollment.");
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(participationId);
+
+        ParticipationId = participationId.Trim();
+        UpdatedAt = DateTime.UtcNow;
     }
 
     private void EnsureNotTerminal()
