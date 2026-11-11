@@ -1,34 +1,80 @@
-# 01 — Product discovery and domain requirements
+# 01 — Product discovery and shared domain foundation
 
 ## Objective
-Define the product scope for an open-source management platform for Brazilian NGOs/OSCs, expanding beyond stakeholder CRUD into social-program delivery, funding lifecycle, and end-to-end financial resource management. This is discovery, not implementation evidence.
+
+Preserve the product discovery baseline and implement the minimal executable shared kernel required by later NGO domain stages. This stage does not implement organization, stakeholder, social-service, project, funding, or financial business capabilities; those belong to Stages 02–09.
 
 ## Current status
-Internal discovery artifacts are documented under
-[docs/discovery](../discovery/README.md). Stage acceptance remains **pending**:
-the repository contains no recorded review of financial terminology by a real
-NGO finance stakeholder or of reporting obligations by an accountant/advisor.
-Documentation completion is therefore not external validation or stage
-acceptance.
+
+Discovery documentation exists under [docs/discovery](../discovery/README.md), but the shared domain kernel has not yet been implemented. Stage 01 is **pending implementation and automated verification**.
+
+External validation with the pilot NGO and specialists is intentionally deferred until after the first stable release. This is a project sequencing decision, not a missing Stage 01 deliverable. See the [stakeholder validation strategy](README.md#stakeholder-validation-strategy).
 
 ## Dependencies
+
 None.
 
+## Existing baseline
+
+The repository already contains `HF.Domain.Common.Entities.IEntityBase` and `EntityBase`. The latter generates string GUID v7 identifiers and carries CreatedAt/By and UpdatedAt/By audit fields. Existing educational and operational models (students, teachers, volunteers, collaborators, courses, enrollments, attendance, assets, and liabilities) must be inspected and preserved unless a concrete compatibility issue is demonstrated.
+
+Do not rewrite `EntityBase` merely to fit a preferred pattern.
+
 ## Work
-- Map NGO profiles, governance, units, staff, volunteers, beneficiaries/families, donors, suppliers, funders, partners, and their relationships.
-- Map the lifecycle from strategic planning and project design through funding applications, awards/agreements, execution, financial control, evidence, accountability, and impact reporting.
-- Interview finance, project coordination, educators/social workers, executive management, board members, and external accountants/funders where possible.
-- Catalogue financial scenarios: unrestricted and restricted donations, grants, public/private agreements, multiple funders per project, transfers, reimbursements, in-kind donations, recurring commitments, cash/bank accounts, petty cash, shared costs, refunds, and returned funds.
-- Define approval limits, segregation of duties, evidence requirements, funding restrictions, reporting calendars, and the difference between operational management and statutory accounting.
-- Define offline use cases and identify which financial actions may be created offline, which require approval/server validation, and how stale balances are presented.
-- Establish data classification, LGPD purposes/legal bases, minimization, retention, access, audit, export, and deletion requirements.
-- Benchmark publicly documented competitor capabilities without copying proprietary implementation or assuming undocumented behavior.
+
+### Discovery baseline
+
+- Preserve and use existing discovery artifacts to guide Stages 02–10.
+- Keep assumptions, open decisions, and synthetic scenarios explicit.
+- Do not require interviews or approval from the pilot NGO during this stage.
+
+### Shared domain kernel
+
+Implement only reusable, framework-independent primitives needed by later bounded contexts:
+
+1. A value-object abstraction with value equality based on explicitly supplied equality components.
+2. A domain-event contract carrying a UTC occurrence timestamp.
+3. An aggregate-root base type extending the existing `EntityBase`, exposing pending domain events read-only and supporting controlled registration and clearing.
+4. A domain exception carrying a stable machine-readable error code and human-readable message.
+
+Intended contracts and relationships:
+
+```text
+IEntityBase
+  └── EntityBase
+        └── AggregateRoot ── owns 0..N IDomainEvent
+
+ValueObject (independent equality abstraction)
+DomainException (framework-independent rule failure)
+```
+
+Rules:
+
+- Keep `IEntityBase` and current `EntityBase` identity/audit semantics compatible.
+- `AggregateRoot` derives from `EntityBase`; only aggregate roots own/raise domain events. Child entities do not publish independently.
+- `IDomainEvent` exposes `DateTimeOffset OccurredOnUtc`; later bounded contexts define immutable event records.
+- Aggregate roots expose events as `IReadOnlyCollection<IDomainEvent>`; registration is protected for derived aggregate behavior, and clearing is explicit for a future dispatch boundary.
+- `ValueObject` implements equality and hash code from ordered equality components supplied by each derived value object. No EF Core or serialization dependency.
+- `DomainException` contains a non-empty stable `Code`, message, and optional inner exception. No HTTP/ProblemDetails dependency.
+- Do not introduce event dispatcher, event bus, mediator integration, repository, Unit of Work, domain service, or persistence mapping in this stage.
+
+## Explicit exclusions
+
+Do not implement business entities/aggregates for Stages 02–09, including Organization, Unit, Person/Stakeholder, Program, Beneficiary, Service, Project, Indicator, FundingSource, FundingInstrument, Grant, FinancialAccount, Budget, Allocation, Commitment, FinancialTransaction, Reconciliation, AccountabilityReport, or Document.
+
+Do not modify API routes, application use cases, EF Core mappings, migrations, authentication, clients, MAUI, synchronization, or deployment.
 
 ## Acceptance criteria
-- Approved domain glossary, actor/persona matrix, workflow maps, prioritized capability backlog, data inventory, and privacy/threat assessment.
-- Explicit MVP boundary and deferred capabilities are agreed.
-- Financial terminology and reporting obligations are validated with at least one real NGO finance stakeholder and an accountant/advisor.
-- Every unresolved decision has an owner and evidence needed.
+
+- Shared domain kernel contracts and base types are implemented under `HF.Domain`.
+- Existing `IEntityBase` and `EntityBase` behavior remains compatible.
+- Unit tests cover GUID v7 identity, audit defaults, value-object equality/hash semantics, aggregate event registration/read-only exposure/clearing, UTC event contract, and domain exception code/message/inner exception.
+- `HF.Domain` has no dependency on Application, Infrastructure, API, EF Core, Npgsql, HTTP, MAUI, or UI frameworks.
+- Full solution builds without regressions.
+- Existing tests pass; new tests are deterministic and use no external services.
+- No business model belonging to Stages 02–09 is introduced.
+- Documentation does not present discovery assumptions as stakeholder-validated facts.
 
 ## Risks and open decisions
-The actual NGO operating model, funding instruments, accounting practices, legal obligations, approval policies, and offline duration must be discovered. Avoid designing around a single NGO's exceptional workflow.
+
+The discovery baseline contains assumptions about Brazilian NGO funding and accounting workflows. They guide initial implementation but are not externally validated facts. After the first stable release, the pilot NGO and relevant specialists will validate real workflows; discrepancies must be recorded and prioritized before broad production adoption. Do not claim statutory accounting or legal compliance without qualified review.
