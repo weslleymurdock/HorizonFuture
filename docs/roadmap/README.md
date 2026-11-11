@@ -55,3 +55,7 @@ Stages 01–10 are deliberately backend/domain-first. Stages 11–13 establish t
 - Keep sensitive stakeholder data and financial documents access-controlled; use synthetic data in tests.
 
 The [per-NGO deployment manual](../deployment-manual.md) describes the current hosting direction. Revalidate provider quotas and pricing before deployment; free tiers are not production availability guarantees.
+
+## Competitive capability reference
+
+The domain discovery baseline should consider publicly described Bússola Social capabilities as market references, not implementation specifications: [Bússola Financeiro](https://lp.bussolasocial.com.br/bussolafinanceiro) describes project-based income/expense tracking, multiple funding sources, financial accounts, transfers, evidence attachments, configurable categories/rubrics, budget-versus-actual execution, cash flow, and accountability exports. [Bússola Social — investment/social project management](https://lp.bussolasocial.com.br/sistema-de-gestao-para-investimento-social) describes edital publication/selection, evaluation matrices, project monitoring, indicators, evidence, and accountability. Use these public capabilities to inform discovery while defining HorizonFuture's own open domain model and scope.
