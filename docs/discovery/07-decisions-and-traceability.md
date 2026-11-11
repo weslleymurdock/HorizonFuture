@@ -13,7 +13,7 @@
 | ADR-D07 | Offline data and authority window | more offline time helps field work; increases stale-permission risk | security define window and revocation / technical + NGO | loss and revocation scenarios | open |
 | ADR-D08 | Statement and accountability formats | one format reduces MVP; adapters serve funders | prioritize two formats after samples / finance | authorized files and layouts | open |
 | ADR-D09 | Retention, export, and deletion | long retention helps audit; increases exposure | implement privacy-safe defaults; qualified review after stable release and before broad rollout | applicable documentary policy | blocked by validation |
-| ADR-D10 | Bank, gateway, and signature integrations | manual reduces dependencies; integration reduces work and creates vendor risk | assess only after MVP / leadership + technical | cost, security, and contract | deferred |
+| ADR-D10 | Bank, gateway, and signature integrations | manual reduces dependencies; integration reduces work and creates vendor risk | assess only after MVP / leadership + technical | cost, security, and contract | deferred |\n| ADR-D11 | Timing of external stakeholder validation | validate before implementation versus validate against a working stable product | use discovery assumptions, synthetic scenarios, internal review, and automated tests pre-release; structured pilot with designated NGO after first stable release / product owner | pilot plan, observed workflows, feedback, prioritized issues, decisions | accepted sequencing decision |
 
 ## Traceability matrix
 
@@ -50,7 +50,7 @@
 | Terminology with NGO finance professional | no record/evidence in repository | pending | interview/recorded review |
 | Obligations with qualified accountant/advisor | no record/evidence in repository | pending | documented review |
 
-## Required validation
+## Post-release pilot validation plan
 
 Before marking the stage accepted, record date, participants, anonymized
 organization or authorization to identify it, questions, answers, decisions,
