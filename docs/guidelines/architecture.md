@@ -6,19 +6,23 @@ The repository contains an ASP.NET Core API project and separate Domain, Applica
 
 ## Planned system
 
-The target is an offline-first .NET MAUI client with local SQLite and an ASP.NET Core REST backend. Provision one independent backend deployment and PostgreSQL database per NGO. Configure each distributed MAUI app with that installation’s backend URL. A browser Blazor client, if used, is also configured for that installation. Normal operation does not depend on a shared cross-NGO database or service. Domain rules belong in Domain; use cases and ports in Application; storage/network adapters in Infrastructure; HTTP transport and authorization in API; host wiring in Composition; UI/device integration stay in their respective clients.
+The target is an NGO management platform whose backend domain connects organization/stakeholders, social-service delivery, projects and impact, fundraising/opportunities/agreements, financial accounts and classifications, budgets and restricted resource allocation, financial operations/cash flow, reconciliation, accountability, and audit/reporting. It is an offline-first .NET MAUI client with local SQLite and an ASP.NET Core REST backend. Provision one independent backend deployment and PostgreSQL database per NGO. Configure each distributed MAUI app with that installation’s backend URL. A browser Blazor client, if used, is also configured for that installation. Normal operation does not depend on a shared cross-NGO database or service. Domain rules belong in Domain; use cases and ports in Application; storage/network adapters in Infrastructure; HTTP transport and authorization in API; host wiring in Composition; UI/device integration stay in their respective clients. The roadmap deliberately completes domain discovery/modeling and backend foundations before MAUI implementation.
 
 ## Database provider
 
 PostgreSQL is the planned managed server database; Neon is selected for the largest verified free PostgreSQL storage among the evaluated providers as of 2026-11-03 (1 GB/project versus Supabase Free at 500 MB/project). Free limits are evaluation/development allowances, not production availability guarantees. See the [deployment manual](../deployment-manual.md) for source URLs and current caveats. Keep provider-specific code behind Infrastructure abstractions and migrations portable where practical. Validate exact EF Core/Npgsql versions, transactions, generated values, concurrency, retries, backup/restore, and migration behavior before production.
 
-The client SQLite schema and server schema are separately versioned. Offline clients may miss several server releases, so API and sync payload changes require explicit compatibility policy and migrations.
+PostgreSQL is the only server relational database; SQLite is exclusively the local MAUI database. The client SQLite schema and server PostgreSQL schema are separately versioned. Offline clients may miss several server releases, so API and sync payload changes require explicit compatibility policy and migrations.
 
 ## Installation and school-unit boundaries
 
 Each backend/database installation belongs to one NGO. Do not add tenant partitioning or tenant identifiers to the ordinary per-installation application data path. Within an NGO, authenticate users and enforce role, ownership, and school-unit permissions on the server for every operation; client filters are not authorization. An optional future cross-installation reporting/aggregation service must be separately deployed, explicitly authorized by each participating NGO, and isolated from normal app availability and sync.
 
 Media is stored outside relational rows. Relational records carry only authorized metadata and stable references. Transfer tokens, access paths, retention, deletion, and retry behavior need independent design.
+
+## NGO financial domain boundaries
+
+The financial domain must distinguish financial accounts (where funds are held), categories/chart of accounts (what a movement represents), funding sources (where funds originate), projects (what they support), budget rubrics (which approved limit applies), and transactions (what actually moved or became due). Trace restricted funding from source and agreement through allocations, commitments, posted transactions, evidence, reconciliation, and accountability reports. Posted financial records are corrected through audited reversals/amendments, never destructive edits or generic last-write-wins. Management/accountability reporting does not imply statutory accounting compliance; the scope of double-entry ledger and accountant integrations must be an explicit decision validated with specialists.
 
 ## API client and Kiota consumption
 
