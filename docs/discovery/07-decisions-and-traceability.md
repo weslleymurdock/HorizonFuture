@@ -13,7 +13,8 @@
 | ADR-D07 | Offline data and authority window | more offline time helps field work; increases stale-permission risk | security define window and revocation / technical + NGO | loss and revocation scenarios | open |
 | ADR-D08 | Statement and accountability formats | one format reduces MVP; adapters serve funders | prioritize two formats after samples / finance | authorized files and layouts | open |
 | ADR-D09 | Retention, export, and deletion | long retention helps audit; increases exposure | implement privacy-safe defaults; qualified review after stable release and before broad rollout | applicable documentary policy | blocked by validation |
-| ADR-D10 | Bank, gateway, and signature integrations | manual reduces dependencies; integration reduces work and creates vendor risk | assess only after MVP / leadership + technical | cost, security, and contract | deferred |\n| ADR-D11 | Timing of external stakeholder validation | validate before implementation versus validate against a working stable product | use discovery assumptions, synthetic scenarios, internal review, and automated tests pre-release; structured pilot with designated NGO after first stable release / product owner | pilot plan, observed workflows, feedback, prioritized issues, decisions | accepted sequencing decision |
+| ADR-D10 | Bank, gateway, and signature integrations | manual reduces dependencies; integration reduces work and creates vendor risk | assess only after MVP / leadership + technical | cost, security, and contract | deferred |
+| ADR-D11 | Timing of external stakeholder validation | validate before implementation versus validate against a working stable product | use discovery assumptions, synthetic scenarios, internal review, and automated tests pre-release; structured pilot with designated NGO after first stable release / product owner | pilot plan, observed workflows, feedback, prioritized issues, decisions | accepted sequencing decision |
 
 ## Traceability matrix
 
@@ -47,12 +48,13 @@
 | Operational offline | document 05, FR-14 | documented | scenarios and window policy |
 | MVP and deferred capabilities | document 06 | documented | product approval |
 | Decision owner and evidence | this document | documented | close blocked ADRs |
-| Terminology with NGO finance professional | no record/evidence in repository | pending | interview/recorded review |
-| Obligations with qualified accountant/advisor | no record/evidence in repository | pending | documented review |
+| Shared domain kernel implementation | `HF.Domain` primitives and unit-test sources | implemented; test execution pending | run tests after adapter/workload compatibility is resolved |
+| Terminology with NGO finance professional | no record/evidence in repository | deferred post-release | interview/recorded review after first stable release |
+| Obligations with qualified accountant/advisor | no record/evidence in repository | deferred post-release | documented review after first stable release |
 
 ## Post-release pilot validation plan
 
-Before marking the stage accepted, record date, participants, anonymized
+For post-release validation, record date, participants, anonymized
 organization or authorization to identify it, questions, answers, decisions,
 disagreements, and pending items. Minimum questions are:
 
@@ -63,5 +65,5 @@ disagreements, and pending items. Minimum questions are:
 5. Which reports does the accountant consider management versus statutory?
 6. Which records may be captured offline and which require connectivity?
 
-Without this evidence, internal documentation must not be declared acceptance
-of stage 01.
+This evidence is required for post-release domain refinement, but its absence
+does not block acceptance of the Stage 01 implementation.

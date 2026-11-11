@@ -36,10 +36,13 @@ contains real beneficiary, student, donor, or organization data.
 
 ## Stage status
 
-Internal discovery documentation is recorded. Acceptance of stage 01 remains
-**pending**, because review of financial terminology and accountability
-obligations by an NGO finance professional and a qualified accountant or
-advisor still has no recorded evidence. See [the acceptance checklist](07-decisions-and-traceability.md#stage-01-acceptance-checklist).
+Internal discovery documentation and the shared domain foundation are recorded.
+Stage 01 implementation is complete. Final acceptance remains **pending
+automated test execution** because the current test adapter discovers no tests
+on this host; review of financial terminology and accountability obligations by
+an NGO finance professional and a qualified accountant or advisor is explicitly
+deferred until after the first stable release and is not an implementation
+blocker. See [the acceptance checklist](07-decisions-and-traceability.md#stage-01-acceptance-checklist).
 
 ## Boundaries
 

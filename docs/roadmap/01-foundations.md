@@ -6,9 +6,9 @@ Preserve the product discovery baseline and implement the minimal executable sha
 
 ## Current status
 
-Discovery documentation exists under [docs/discovery](../discovery/README.md), but the shared domain kernel has not yet been implemented. Stage 01 is **pending implementation and automated verification**.
+Discovery documentation and the shared domain kernel exist under [docs/discovery](../discovery/README.md). Stage 01 implementation is complete; final acceptance remains **pending automated test execution** because the current test adapter discovers no tests on this host.
 
-External validation with the pilot NGO and specialists is intentionally deferred until after the first stable release. This is a project sequencing decision, not a missing Stage 01 deliverable. See the [stakeholder validation strategy](README.md#stakeholder-validation-strategy).
+External validation with the pilot NGO and specialists is intentionally deferred until after the first stable release. This is a project sequencing decision, not a missing Stage 01 deliverable. See the [post-release pilot validation plan](../discovery/07-decisions-and-traceability.md#post-release-pilot-validation-plan).
 
 ## Dependencies
 
