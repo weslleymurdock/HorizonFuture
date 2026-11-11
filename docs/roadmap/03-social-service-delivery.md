@@ -23,7 +23,16 @@ Detailed guidelines, lifecycle diagrams, and privacy rules are documented in `do
 
 ## Stabilization status
 
-Backend domain acceptance testing is complete. All tests run locally on Windows using the .NET SDK.
+Backend domain stabilization and acceptance testing are complete. All tests run locally on Windows using the .NET SDK.
+
+Key domain stabilizations applied:
+- **`ProgramParticipation` instantiation:** Restricted to internal scope and coupled with `ProgramEnrollment`. Direct unvetted constructor access is prevented.
+- **Participation duplicate prevention:** Enforced via `ProgramEnrollment.HasParticipation` and `ParticipationId`. Repeated creation attempts fail immediately.
+- **Atomic state transitions:** `ProgramParticipation` (`Suspend`, `Resume`, `Complete`, `Terminate`) validates all arguments and constructs history entries prior to mutating state or updating timestamps.
+- **Eligibility consistency & approval guards:** `EligibilityAssessmentResult` enforces coherence between `IsEligible` and `mandatoryCriteriaMet`. Ineligible enrollments or enrollments missing mandatory criteria assessment cannot be approved.
+- **Benefit auditability:** Full dispatch, revocation, and return lifecycle tracking with timestamps and actors (`DispatchedDate`, `DispatchedByPersonId`, `RevokedDate`, `RevokedByPersonId`, `ReturnedDate`, `ReturnedByPersonId`).
+- **Service lifecycle integrity:** Initial `Completed` or `Cancelled` states rejected in default construction; explicit `RecordCompleted` factory provided; audit actors captured.
+- **Session attendance sealing:** Attendance recording/modification blocked on completed or cancelled sessions; invalid or unrecorded statuses rejected; state preserved on failures.
 
 Required local validation commands:
 
@@ -35,7 +44,7 @@ dotnet test tests\HF.UnitTests\HF.UnitTests.csproj
 
 Execution result on Windows host with .NET SDK `10.0.403`:
 - `HF.Domain -> HF.Domain.dll`: 0 warnings, 0 errors.
-- `HF.UnitTests`: 161 passed, 0 failed, 0 skipped (including 40 new comprehensive domain tests covering all social service delivery scenarios).
+- `HF.UnitTests`: 172 passed, 0 failed, 0 skipped (including 51 domain tests covering all social service delivery scenarios, error flows, and state preservation).
 
 ## Work
 - [x] Model program/service lines, target audiences, eligibility criteria, locations, and operating periods.
@@ -45,12 +54,14 @@ Execution result on Windows host with .NET SDK `10.0.403`:
 - [x] Define case/history records within an approved privacy scope and encapsulate sensitive notes.
 - [x] Define documents and evidence metadata while keeping binary media outside relational storage.
 - [x] Establish links from delivered services and beneficiaries to programs and funded projects without duplicating records.
+- [x] Stabilize aggregate roots, transition atomicity, duplicate prevention, and lifecycle sealing against invalid states.
 
 ## Acceptance criteria
 - [x] Lifecycle diagrams cover enrollment through participation, attendance, referral, and benefit delivery.
 - [x] Authorization and privacy guidelines protect beneficiary records and sensitive notes.
 - [x] Required operational rules and invariants are enforced in domain aggregates.
 - [x] Domain invariants and representative synthetic scenarios are covered by automated unit tests.
+- [x] Aggregate integrity, state transition atomicity, and error path preservation are verified by unit tests.
 
 ## Risks and open decisions
 1. **Clinical/Medical Scope:** The domain explicitly refuses to become an electronic health record. No ICD/medical diagnoses or prescriptions are accepted in `SocialCareEncounter`.

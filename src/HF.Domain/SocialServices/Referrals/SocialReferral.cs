@@ -49,34 +49,65 @@ public sealed class SocialReferral : AggregateRoot
     public string? SourceEncounterId { get; private set; }
     public string? ProgramId { get; private set; }
     public ReferralStatus Status { get; private set; }
+
+    public DateOnly? DispatchedDate { get; private set; }
+    public string? DispatchedByPersonId { get; private set; }
+
+    public DateOnly? AcknowledgedDate { get; private set; }
+    public string? AcknowledgedBy { get; private set; }
+
     public DateOnly? OutcomeDate { get; private set; }
     public string? OutcomeNotes { get; private set; }
     public bool? IsSuccessful { get; private set; }
-    public string? CancellationReason { get; private set; }
+    public string? OutcomeRecordedByPersonId { get; private set; }
 
-    public void Dispatch()
+    public string? CancellationReason { get; private set; }
+    public string? CancelledByPersonId { get; private set; }
+    public DateOnly? CancellationDate { get; private set; }
+
+    public void Dispatch(DateOnly? dispatchedDate = null, string? dispatchedByPersonId = null)
     {
         if (Status != ReferralStatus.Pending)
         {
             throw new DomainException("referral.invalid_transition", $"Cannot dispatch a referral in status '{Status}'.");
         }
 
+        var effectiveDispatchedDate = dispatchedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        if (effectiveDispatchedDate < ReferralDate)
+        {
+            throw new DomainException("referral.invalid_dispatch_date", "Dispatch date cannot be earlier than referral date.");
+        }
+
+        DispatchedDate = effectiveDispatchedDate;
+        DispatchedByPersonId = string.IsNullOrWhiteSpace(dispatchedByPersonId) ? null : dispatchedByPersonId.Trim();
         Status = ReferralStatus.Dispatched;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AcknowledgeReceipt()
+    public void AcknowledgeReceipt(DateOnly? acknowledgedDate = null, string? acknowledgedBy = null)
     {
         if (Status != ReferralStatus.Pending && Status != ReferralStatus.Dispatched)
         {
             throw new DomainException("referral.invalid_transition", $"Cannot acknowledge referral in status '{Status}'.");
         }
 
+        var effectiveDate = acknowledgedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        if (DispatchedDate.HasValue && effectiveDate < DispatchedDate.Value)
+        {
+            throw new DomainException("referral.invalid_acknowledgement_date", "Acknowledgement date cannot be earlier than dispatch date.");
+        }
+
+        AcknowledgedDate = effectiveDate;
+        AcknowledgedBy = string.IsNullOrWhiteSpace(acknowledgedBy) ? null : acknowledgedBy.Trim();
         Status = ReferralStatus.Acknowledged;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void RecordOutcome(DateOnly outcomeDate, string outcomeNotes, bool isSuccessful)
+    public void RecordOutcome(
+        DateOnly outcomeDate,
+        string outcomeNotes,
+        bool isSuccessful,
+        string? recordedByPersonId = null)
     {
         if (Status == ReferralStatus.Completed)
         {
@@ -102,12 +133,13 @@ public sealed class SocialReferral : AggregateRoot
         OutcomeDate = outcomeDate;
         OutcomeNotes = outcomeNotes.Trim();
         IsSuccessful = isSuccessful;
+        OutcomeRecordedByPersonId = string.IsNullOrWhiteSpace(recordedByPersonId) ? null : recordedByPersonId.Trim();
         UpdatedAt = DateTime.UtcNow;
 
         AddDomainEvent(new SocialReferralCompletedEvent(Id, BeneficiaryPersonId, OutcomeDate.Value, IsSuccessful.Value));
     }
 
-    public void Cancel(string reason)
+    public void Cancel(string reason, string? cancelledBy = null, DateOnly? cancellationDate = null)
     {
         if (Status == ReferralStatus.Cancelled)
         {
@@ -126,6 +158,8 @@ public sealed class SocialReferral : AggregateRoot
 
         Status = ReferralStatus.Cancelled;
         CancellationReason = reason.Trim();
+        CancelledByPersonId = string.IsNullOrWhiteSpace(cancelledBy) ? null : cancelledBy.Trim();
+        CancellationDate = cancellationDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         UpdatedAt = DateTime.UtcNow;
 
         AddDomainEvent(new SocialReferralCancelledEvent(Id, CancellationReason));

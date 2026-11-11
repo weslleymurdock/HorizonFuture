@@ -48,17 +48,33 @@ public sealed class DeliveredBenefit : AggregateRoot
     public BenefitDeliveryStatus Status { get; private set; }
     public DateOnly GrantedDate { get; private set; }
     public string GrantedByPersonId { get; private set; } = string.Empty;
+
+    public DateOnly? DispatchedDate { get; private set; }
+    public string? DispatchedByPersonId { get; private set; }
+
     public DateOnly? DeliveredDate { get; private set; }
     public string? DeliveredByPersonId { get; private set; }
     public string? ReceivedByPersonId { get; private set; }
     public string? DeliveryReceiptEvidenceId { get; private set; }
+
+    public DateOnly? RevokedDate { get; private set; }
+    public string? RevokedByPersonId { get; private set; }
     public string? RevocationReason { get; private set; }
+
+    public DateOnly? ReturnedDate { get; private set; }
+    public string? ReturnedByPersonId { get; private set; }
     public string? ReturnReason { get; private set; }
+
     public string? ProjectId { get; private set; }
     public string? FundingSourceId { get; private set; }
 
     public void Dispatch(DateOnly dispatchDate, string dispatchedByPersonId)
     {
+        if (Status == BenefitDeliveryStatus.Dispatched)
+        {
+            throw new DomainException("benefit.already_dispatched", "The benefit has already been dispatched.");
+        }
+
         if (Status != BenefitDeliveryStatus.Granted)
         {
             throw new DomainException("benefit.invalid_state_for_dispatch", $"Cannot dispatch benefit in state '{Status}'.");
@@ -69,8 +85,13 @@ public sealed class DeliveredBenefit : AggregateRoot
             throw new DomainException("benefit.invalid_dispatch_date", "Dispatch date cannot be earlier than grant date.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(dispatchedByPersonId);
+        if (string.IsNullOrWhiteSpace(dispatchedByPersonId))
+        {
+            throw new ArgumentException("DispatchedByPersonId cannot be blank.", nameof(dispatchedByPersonId));
+        }
 
+        DispatchedDate = dispatchDate;
+        DispatchedByPersonId = dispatchedByPersonId.Trim();
         Status = BenefitDeliveryStatus.Dispatched;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -96,8 +117,20 @@ public sealed class DeliveredBenefit : AggregateRoot
             throw new DomainException("benefit.invalid_delivery_date", "Delivery date cannot be earlier than grant date.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(deliveredByPersonId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(receivedByPersonId);
+        if (DispatchedDate.HasValue && deliveryDate < DispatchedDate.Value)
+        {
+            throw new DomainException("benefit.invalid_delivery_date", "Delivery date cannot be earlier than dispatch date.");
+        }
+
+        if (string.IsNullOrWhiteSpace(deliveredByPersonId))
+        {
+            throw new ArgumentException("DeliveredByPersonId cannot be blank.", nameof(deliveredByPersonId));
+        }
+
+        if (string.IsNullOrWhiteSpace(receivedByPersonId))
+        {
+            throw new ArgumentException("ReceivedByPersonId cannot be blank.", nameof(receivedByPersonId));
+        }
 
         Status = BenefitDeliveryStatus.Delivered;
         DeliveredDate = deliveryDate;
@@ -109,7 +142,7 @@ public sealed class DeliveredBenefit : AggregateRoot
         AddDomainEvent(new BenefitDeliveredEvent(Id, BeneficiaryPersonId, ProgramId, DeliveredDate.Value, DeliveredByPersonId, ReceivedByPersonId));
     }
 
-    public void Revoke(string reason, string revokedByPersonId)
+    public void Revoke(string reason, string revokedByPersonId, DateOnly? revokedDate = null)
     {
         if (Status == BenefitDeliveryStatus.Delivered)
         {
@@ -126,13 +159,24 @@ public sealed class DeliveredBenefit : AggregateRoot
             throw new DomainException("benefit.revocation_reason_required", "A reason is required to revoke a benefit.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(revokedByPersonId);
+        if (string.IsNullOrWhiteSpace(revokedByPersonId))
+        {
+            throw new ArgumentException("RevokedByPersonId cannot be blank.", nameof(revokedByPersonId));
+        }
+
+        var effectiveRevokedDate = revokedDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        if (effectiveRevokedDate < GrantedDate)
+        {
+            throw new DomainException("benefit.invalid_revocation_date", "Revocation date cannot be earlier than grant date.");
+        }
 
         Status = BenefitDeliveryStatus.Revoked;
+        RevokedDate = effectiveRevokedDate;
+        RevokedByPersonId = revokedByPersonId.Trim();
         RevocationReason = reason.Trim();
         UpdatedAt = DateTime.UtcNow;
 
-        AddDomainEvent(new BenefitRevokedEvent(Id, RevocationReason, revokedByPersonId.Trim()));
+        AddDomainEvent(new BenefitRevokedEvent(Id, RevocationReason, RevokedByPersonId));
     }
 
     public void Return(DateOnly returnDate, string reason, string returnedByPersonId)
@@ -152,15 +196,25 @@ public sealed class DeliveredBenefit : AggregateRoot
             throw new DomainException("benefit.return_reason_required", "A reason is required to record a benefit return.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(returnedByPersonId);
+        if (string.IsNullOrWhiteSpace(returnedByPersonId))
+        {
+            throw new ArgumentException("ReturnedByPersonId cannot be blank.", nameof(returnedByPersonId));
+        }
 
         Status = BenefitDeliveryStatus.Returned;
+        ReturnedDate = returnDate;
+        ReturnedByPersonId = returnedByPersonId.Trim();
         ReturnReason = reason.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void SetAccountingHooks(string? projectId, string? fundingSourceId)
     {
+        if (Status is BenefitDeliveryStatus.Revoked or BenefitDeliveryStatus.Returned)
+        {
+            throw new DomainException("benefit.not_modifiable", $"Cannot update accounting hooks for a benefit in state '{Status}'.");
+        }
+
         ProjectId = string.IsNullOrWhiteSpace(projectId) ? null : projectId.Trim();
         FundingSourceId = string.IsNullOrWhiteSpace(fundingSourceId) ? null : fundingSourceId.Trim();
         UpdatedAt = DateTime.UtcNow;

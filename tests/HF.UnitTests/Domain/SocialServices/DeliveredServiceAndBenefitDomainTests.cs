@@ -26,7 +26,7 @@ public sealed class DeliveredServiceAndBenefitDomainTests
     }
 
     [Fact]
-    public void DeliveredBenefit_GrantAndMarkAsDelivered_SetsRecipientAndEmitsEvent()
+    public void DeliveredBenefit_FullLifecycleWithDispatch_PreservesAllAuditTrail()
     {
         var beneficiaryChild = new Person("Pedro Henrique", "child-1");
         var guardianMother = new Person("Maria Aparecida", "guardian-1");
@@ -52,9 +52,28 @@ public sealed class DeliveredServiceAndBenefitDomainTests
             fundingSourceId: "edital-conselho-municipal");
 
         Assert.Equal(BenefitDeliveryStatus.Granted, benefit.Status);
+        Assert.Equal("assistente-social-1", benefit.GrantedByPersonId);
+        Assert.Equal(grantDate, benefit.GrantedDate);
         Assert.Equal("proj-seguranca-alimentar-2026", benefit.ProjectId);
         Assert.Equal("edital-conselho-municipal", benefit.FundingSourceId);
         Assert.Contains(benefit.DomainEvents, e => e is BenefitGrantedEvent);
+
+        // Dispatch
+        var dispatchDate = new DateOnly(2026, 3, 3);
+        benefit.Dispatch(dispatchDate, "motorista-logistica-1");
+        Assert.Equal(BenefitDeliveryStatus.Dispatched, benefit.Status);
+        Assert.Equal(dispatchDate, benefit.DispatchedDate);
+        Assert.Equal("motorista-logistica-1", benefit.DispatchedByPersonId);
+
+        // Cannot dispatch again
+        var exAlreadyDispatched = Assert.Throws<DomainException>(() =>
+            benefit.Dispatch(new DateOnly(2026, 3, 4), "outro-motorista"));
+        Assert.Equal("benefit.already_dispatched", exAlreadyDispatched.Code);
+
+        // Delivery date cannot be earlier than dispatch date
+        var exDeliveryBeforeDispatch = Assert.Throws<DomainException>(() =>
+            benefit.MarkAsDelivered(new DateOnly(2026, 3, 2), "staff-1", guardianMother.Id));
+        Assert.Equal("benefit.invalid_delivery_date", exDeliveryBeforeDispatch.Code);
 
         // Deliver to guardian
         var deliveryDate = new DateOnly(2026, 3, 5);
@@ -87,15 +106,24 @@ public sealed class DeliveredServiceAndBenefitDomainTests
     }
 
     [Fact]
-    public void DeliveredBenefit_Revoke_OnlyAllowedBeforeDelivery()
+    public void DeliveredBenefit_Revoke_PreservesAuditAndOnlyAllowedBeforeDelivery()
     {
+        var grantDate = new DateOnly(2026, 3, 1);
         var benefit = new DeliveredBenefit(
             "child-1", "prog-1", BenefitType.HygieneKit, "Kit higiene",
-            new BenefitQuantity(1, "kit"), new DateOnly(2026, 3, 1), "staff-1");
+            new BenefitQuantity(1, "kit"), grantDate, "staff-1");
 
-        benefit.Revoke("Critérios revisados; família reenquadrada em outro benefício", "assistente-social-1");
+        // Cannot revoke with date earlier than grant
+        var exRevokeDate = Assert.Throws<DomainException>(() =>
+            benefit.Revoke("Critérios revisados", "assistente-social-1", new DateOnly(2026, 2, 28)));
+        Assert.Equal("benefit.invalid_revocation_date", exRevokeDate.Code);
+
+        var revokeDate = new DateOnly(2026, 3, 2);
+        benefit.Revoke("Critérios revisados; família reenquadrada em outro benefício", "assistente-social-1", revokeDate);
         Assert.Equal(BenefitDeliveryStatus.Revoked, benefit.Status);
         Assert.Equal("Critérios revisados; família reenquadrada em outro benefício", benefit.RevocationReason);
+        Assert.Equal("assistente-social-1", benefit.RevokedByPersonId);
+        Assert.Equal(revokeDate, benefit.RevokedDate);
         Assert.Contains(benefit.DomainEvents, e => e is BenefitRevokedEvent);
 
         var exRevokeAgain = Assert.Throws<DomainException>(() =>
@@ -104,7 +132,7 @@ public sealed class DeliveredServiceAndBenefitDomainTests
     }
 
     [Fact]
-    public void DeliveredBenefit_Return_OnlyAllowedForDeliveredBenefits()
+    public void DeliveredBenefit_Return_PreservesAuditAndOnlyAllowedForDeliveredBenefits()
     {
         var benefit = new DeliveredBenefit(
             "person-1", "prog-1", BenefitType.Clothing, "Uniforme escolar",
@@ -114,34 +142,110 @@ public sealed class DeliveredServiceAndBenefitDomainTests
             benefit.Return(new DateOnly(2026, 3, 2), "Tamanho incorreto", "staff-1"));
         Assert.Equal("benefit.cannot_return_undelivered", exReturnUndelivered.Code);
 
-        benefit.MarkAsDelivered(new DateOnly(2026, 3, 2), "staff-1", "person-1");
-        benefit.Return(new DateOnly(2026, 3, 5), "Tamanho incompatível, trocado no mesmo dia", "staff-1");
+        var deliveryDate = new DateOnly(2026, 3, 2);
+        benefit.MarkAsDelivered(deliveryDate, "staff-1", "person-1");
+
+        // Return date cannot be earlier than delivery date
+        var exReturnDate = Assert.Throws<DomainException>(() =>
+            benefit.Return(new DateOnly(2026, 3, 1), "Tamanho incorreto", "staff-1"));
+        Assert.Equal("benefit.invalid_return_date", exReturnDate.Code);
+
+        var returnDate = new DateOnly(2026, 3, 5);
+        benefit.Return(returnDate, "Tamanho incompatível, devolvido para troca", "almoxarife-1");
 
         Assert.Equal(BenefitDeliveryStatus.Returned, benefit.Status);
-        Assert.Equal("Tamanho incompatível, trocado no mesmo dia", benefit.ReturnReason);
+        Assert.Equal("Tamanho incompatível, devolvido para troca", benefit.ReturnReason);
+        Assert.Equal("almoxarife-1", benefit.ReturnedByPersonId);
+        Assert.Equal(returnDate, benefit.ReturnedDate);
     }
 
     [Fact]
-    public void DeliveredService_RecordAndCancel_PreservesLifecycle()
+    public void DeliveredService_Constructor_RejectsDirectCompletedOrCancelledStatus()
+    {
+        var exCompleted = Assert.Throws<DomainException>(() =>
+            new DeliveredService(
+                "person-1", "prog-1", "ATENDIMENTO", "staff-1", new DateOnly(2026, 3, 1),
+                initialStatus: ServiceDeliveryStatus.Completed));
+        Assert.Equal("service_delivery.invalid_initial_status", exCompleted.Code);
+
+        var exCancelled = Assert.Throws<DomainException>(() =>
+            new DeliveredService(
+                "person-1", "prog-1", "ATENDIMENTO", "staff-1", new DateOnly(2026, 3, 1),
+                initialStatus: ServiceDeliveryStatus.Cancelled));
+        Assert.Equal("service_delivery.invalid_initial_status", exCancelled.Code);
+    }
+
+    [Fact]
+    public void DeliveredService_ScheduleAndMarkAsCompleted_PreservesAuditAndEmitsEventOnce()
     {
         var service = new DeliveredService(
             beneficiaryPersonId: "person-1",
             programId: "prog-1",
             serviceDefinitionId: "OFICINA_MUSICA",
-            deliveredByPersonId: "educador-1",
-            deliveryDate: new DateOnly(2026, 3, 10),
+            scheduledByPersonId: "coordenador-1",
+            scheduledDate: new DateOnly(2026, 3, 10),
             description: "Oficina individual de nivelamento de flauta",
-            status: ServiceDeliveryStatus.Scheduled);
+            initialStatus: ServiceDeliveryStatus.Scheduled);
 
         Assert.Equal(ServiceDeliveryStatus.Scheduled, service.Status);
+        Assert.Equal("coordenador-1", service.ScheduledByPersonId);
+        Assert.Empty(service.DomainEvents);
+
+        // Completion date cannot precede scheduled date
+        var exInvalidDate = Assert.Throws<DomainException>(() =>
+            service.MarkAsCompleted(new DateOnly(2026, 3, 9), "educador-1"));
+        Assert.Equal("service_delivery.invalid_completion_date", exInvalidDate.Code);
 
         service.MarkAsCompleted(new DateOnly(2026, 3, 10), "educador-1");
         Assert.Equal(ServiceDeliveryStatus.Completed, service.Status);
-        Assert.Contains(service.DomainEvents, e => e is ServiceDeliveredEvent);
+        Assert.Equal("educador-1", service.DeliveredByPersonId);
+        Assert.Single(service.DomainEvents);
+        Assert.IsType<ServiceDeliveredEvent>(service.DomainEvents.First());
+
+        // Cannot complete again
+        var exCompleteAgain = Assert.Throws<DomainException>(() =>
+            service.MarkAsCompleted(new DateOnly(2026, 3, 11), "educador-1"));
+        Assert.Equal("service_delivery.already_completed", exCompleteAgain.Code);
 
         // Cannot cancel completed
         var exCancel = Assert.Throws<DomainException>(() =>
             service.Cancel("Motivo", "staff-1"));
         Assert.Equal("service_delivery.cannot_cancel_completed", exCancel.Code);
+    }
+
+    [Fact]
+    public void DeliveredService_RecordCompleted_FactoryMethodExplicitlyCreatesCompleted()
+    {
+        var service = DeliveredService.RecordCompleted(
+            beneficiaryPersonId: "person-1",
+            programId: "prog-1",
+            serviceDefinitionId: "ACOLHIMENTO_IMEDIATO",
+            deliveredByPersonId: "assistente-social-1",
+            deliveryDate: new DateOnly(2026, 3, 1),
+            description: "Atendimento imediato não agendado");
+
+        Assert.Equal(ServiceDeliveryStatus.Completed, service.Status);
+        Assert.Equal("assistente-social-1", service.DeliveredByPersonId);
+        Assert.Single(service.DomainEvents);
+        Assert.IsType<ServiceDeliveredEvent>(service.DomainEvents.First());
+    }
+
+    [Fact]
+    public void DeliveredService_Cancel_PreservesAuditAndRejectsFurtherModification()
+    {
+        var service = new DeliveredService(
+            "person-1", "prog-1", "OFICINA_ARTE", "staff-1", new DateOnly(2026, 3, 10));
+
+        var cancelDate = new DateOnly(2026, 3, 8);
+        service.Cancel("Beneficiário comunicou desistência do serviço", "coordenador-1", cancelDate);
+
+        Assert.Equal(ServiceDeliveryStatus.Cancelled, service.Status);
+        Assert.Equal("Beneficiário comunicou desistência do serviço", service.CancellationReason);
+        Assert.Equal("coordenador-1", service.CancelledByPersonId);
+        Assert.Equal(cancelDate, service.CancelledDate);
+
+        var exEvidence = Assert.Throws<DomainException>(() =>
+            service.AttachEvidence("ev-001"));
+        Assert.Equal("service_delivery.cannot_modify_cancelled", exEvidence.Code);
     }
 }

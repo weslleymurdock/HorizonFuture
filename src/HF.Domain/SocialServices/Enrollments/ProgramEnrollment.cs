@@ -46,6 +46,9 @@ public sealed class ProgramEnrollment : AggregateRoot
     public string? CancellationReason { get; private set; }
     public string? WithdrawalReason { get; private set; }
     public string? Notes { get; private set; }
+    public string? ParticipationId { get; private set; }
+
+    public bool HasParticipation => !string.IsNullOrEmpty(ParticipationId);
 
     public void StartReview(string reviewerId)
     {
@@ -66,15 +69,27 @@ public sealed class ProgramEnrollment : AggregateRoot
         EnsureNotTerminal();
         ArgumentNullException.ThrowIfNull(assessment);
 
+        if (Status != EnrollmentStatus.Pending && Status != EnrollmentStatus.UnderReview)
+        {
+            throw new DomainException("enrollment.assessment_not_allowed", $"Cannot attach an assessment to an enrollment in status '{Status}'.");
+        }
+
         AssessmentResult = assessment;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Approve(SocialProgram program, string approvedBy, DateOnly decisionDate, EligibilityAssessmentResult? assessment = null)
+    public void Approve(
+        SocialProgram program,
+        string approvedBy,
+        DateOnly decisionDate,
+        EligibilityAssessmentResult? assessment = null)
     {
         EnsureNotTerminal();
         ArgumentNullException.ThrowIfNull(program);
-        ArgumentException.ThrowIfNullOrWhiteSpace(approvedBy);
+        if (string.IsNullOrWhiteSpace(approvedBy))
+        {
+            throw new ArgumentException("ApprovedBy cannot be blank.", nameof(approvedBy));
+        }
 
         if (program.Id != ProgramId)
         {
@@ -93,6 +108,19 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new DomainException("enrollment.invalid_transition", $"Cannot approve an enrollment in status '{Status}'.");
         }
 
+        var effectiveAssessment = assessment ?? AssessmentResult;
+
+        if (effectiveAssessment != null && !effectiveAssessment.IsEligible)
+        {
+            throw new DomainException("enrollment.ineligible", "Cannot approve an enrollment evaluated as ineligible under mandatory criteria.");
+        }
+
+        if (effectiveAssessment == null && program.EligibilityCriteria.Any(c => c.IsMandatory))
+        {
+            throw new DomainException("enrollment.assessment_required", "The program requires an eligibility assessment before approval because mandatory criteria are defined.");
+        }
+
+        // All validations succeeded - atomic mutation:
         if (assessment != null)
         {
             AssessmentResult = assessment;
@@ -199,7 +227,21 @@ public sealed class ProgramEnrollment : AggregateRoot
             throw new DomainException("enrollment.not_approved", "Only an approved enrollment can initiate active participation.");
         }
 
-        return new ProgramParticipation(ProgramId, BeneficiaryPersonId, Id, startDate, startedBy);
+        if (HasParticipation)
+        {
+            throw new DomainException("enrollment.participation_already_created", "A participation has already been created for this enrollment.");
+        }
+
+        if (string.IsNullOrWhiteSpace(startedBy))
+        {
+            throw new ArgumentException("StartedBy cannot be blank.", nameof(startedBy));
+        }
+
+        var participation = new ProgramParticipation(this, startDate, startedBy);
+        ParticipationId = participation.Id;
+        UpdatedAt = DateTime.UtcNow;
+
+        return participation;
     }
 
     private void EnsureNotTerminal()

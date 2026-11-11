@@ -14,42 +14,87 @@ public sealed class DeliveredService : AggregateRoot
         string beneficiaryPersonId,
         string programId,
         string serviceDefinitionId,
+        string scheduledByPersonId,
+        DateOnly scheduledDate,
+        string? description = null,
+        string? linkedEncounterId = null,
+        ServiceDeliveryStatus initialStatus = ServiceDeliveryStatus.Scheduled,
+        string? id = null) : base(id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(beneficiaryPersonId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(programId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serviceDefinitionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scheduledByPersonId);
+
+        if (initialStatus is ServiceDeliveryStatus.Completed or ServiceDeliveryStatus.Cancelled)
+        {
+            throw new DomainException(
+                "service_delivery.invalid_initial_status",
+                $"A service delivery cannot be created directly in status '{initialStatus}'. Use Scheduled, Requested, or RecordCompleted().");
+        }
+
+        BeneficiaryPersonId = beneficiaryPersonId.Trim();
+        ProgramId = programId.Trim();
+        ServiceDefinitionId = serviceDefinitionId.Trim();
+        ScheduledByPersonId = scheduledByPersonId.Trim();
+        DeliveryDate = scheduledDate;
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        LinkedEncounterId = string.IsNullOrWhiteSpace(linkedEncounterId) ? null : linkedEncounterId.Trim();
+        Status = initialStatus;
+    }
+
+    public static DeliveredService RecordCompleted(
+        string beneficiaryPersonId,
+        string programId,
+        string serviceDefinitionId,
         string deliveredByPersonId,
         DateOnly deliveryDate,
         string? description = null,
         string? linkedEncounterId = null,
-        ServiceDeliveryStatus status = ServiceDeliveryStatus.Completed,
-        string? id = null) : base(id)
+        string? id = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(beneficiaryPersonId);
         ArgumentException.ThrowIfNullOrWhiteSpace(programId);
         ArgumentException.ThrowIfNullOrWhiteSpace(serviceDefinitionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(deliveredByPersonId);
 
-        BeneficiaryPersonId = beneficiaryPersonId.Trim();
-        ProgramId = programId.Trim();
-        ServiceDefinitionId = serviceDefinitionId.Trim();
-        DeliveredByPersonId = deliveredByPersonId.Trim();
-        DeliveryDate = deliveryDate;
-        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        LinkedEncounterId = string.IsNullOrWhiteSpace(linkedEncounterId) ? null : linkedEncounterId.Trim();
-        Status = status;
-
-        if (status == ServiceDeliveryStatus.Completed)
+        var service = new DeliveredService
         {
-            AddDomainEvent(new ServiceDeliveredEvent(Id, BeneficiaryPersonId, ProgramId, ServiceDefinitionId, DeliveryDate));
-        }
+            Id = id ?? Guid.CreateVersion7().ToString(),
+            BeneficiaryPersonId = beneficiaryPersonId.Trim(),
+            ProgramId = programId.Trim(),
+            ServiceDefinitionId = serviceDefinitionId.Trim(),
+            ScheduledByPersonId = deliveredByPersonId.Trim(),
+            DeliveredByPersonId = deliveredByPersonId.Trim(),
+            DeliveryDate = deliveryDate,
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            LinkedEncounterId = string.IsNullOrWhiteSpace(linkedEncounterId) ? null : linkedEncounterId.Trim(),
+            Status = ServiceDeliveryStatus.Completed,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        service.AddDomainEvent(new ServiceDeliveredEvent(
+            service.Id,
+            service.BeneficiaryPersonId,
+            service.ProgramId,
+            service.ServiceDefinitionId,
+            service.DeliveryDate));
+
+        return service;
     }
 
     public string BeneficiaryPersonId { get; private set; } = string.Empty;
     public string ProgramId { get; private set; } = string.Empty;
     public string ServiceDefinitionId { get; private set; } = string.Empty;
-    public string DeliveredByPersonId { get; private set; } = string.Empty;
+    public string ScheduledByPersonId { get; private set; } = string.Empty;
+    public string? DeliveredByPersonId { get; private set; }
     public DateOnly DeliveryDate { get; private set; }
     public string? Description { get; private set; }
     public string? LinkedEncounterId { get; private set; }
     public ServiceDeliveryStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public string? CancelledByPersonId { get; private set; }
+    public DateOnly? CancelledDate { get; private set; }
 
     public IReadOnlyList<string> EvidenceIds => _evidenceIds.AsReadOnly();
 
@@ -65,7 +110,15 @@ public sealed class DeliveredService : AggregateRoot
             throw new DomainException("service_delivery.cannot_complete_cancelled", "A cancelled service delivery cannot be completed.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(deliveredByPersonId);
+        if (string.IsNullOrWhiteSpace(deliveredByPersonId))
+        {
+            throw new ArgumentException("DeliveredByPersonId cannot be blank.", nameof(deliveredByPersonId));
+        }
+
+        if (completionDate < DeliveryDate)
+        {
+            throw new DomainException("service_delivery.invalid_completion_date", "Completion date cannot be earlier than scheduled date.");
+        }
 
         DeliveryDate = completionDate;
         DeliveredByPersonId = deliveredByPersonId.Trim();
@@ -75,7 +128,7 @@ public sealed class DeliveredService : AggregateRoot
         AddDomainEvent(new ServiceDeliveredEvent(Id, BeneficiaryPersonId, ProgramId, ServiceDefinitionId, DeliveryDate));
     }
 
-    public void Cancel(string reason, string cancelledBy)
+    public void Cancel(string reason, string cancelledBy, DateOnly? cancellationDate = null)
     {
         if (Status == ServiceDeliveryStatus.Cancelled)
         {
@@ -92,15 +145,25 @@ public sealed class DeliveredService : AggregateRoot
             throw new DomainException("service_delivery.cancellation_reason_required", "A reason is required to cancel a service delivery.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(cancelledBy);
+        if (string.IsNullOrWhiteSpace(cancelledBy))
+        {
+            throw new ArgumentException("CancelledBy cannot be blank.", nameof(cancelledBy));
+        }
 
         Status = ServiceDeliveryStatus.Cancelled;
         CancellationReason = reason.Trim();
+        CancelledByPersonId = cancelledBy.Trim();
+        CancelledDate = cancellationDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void AttachEvidence(string evidenceId)
     {
+        if (Status == ServiceDeliveryStatus.Cancelled)
+        {
+            throw new DomainException("service_delivery.cannot_modify_cancelled", "Cannot attach evidence to a cancelled service delivery.");
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
 
         if (!_evidenceIds.Contains(evidenceId.Trim()))

@@ -85,43 +85,61 @@ erDiagram
 - Inscrição em programa social representa a formalização de demanda e triagem para um serviço específico.
 - É independente do vínculo institucional `OrganizationalMembership`. Uma pessoa pode ser membro da ONG sem estar inscrita em programas sociais, ou participar de vários programas sem ser associada ou colaboradora.
 - **Ciclo de vida:** `Pending` -> `UnderReview` -> `Approved` / `Waitlisted` / `Rejected` / `Cancelled` / `Withdrawn`.
-- **Aprovação:** Somente permitida se o programa estiver `Active`. Inscrições em estados terminais (`Rejected`, `Cancelled`, `Withdrawn`) rejeitam transições.
+- **Aprovação e Elegibilidade:** Somente permitida se o programa estiver `Active`. Se houver avaliação de elegibilidade anexada e o resultado for inelegível (`!IsEligible`), a aprovação é estritamente bloqueada (`DomainException("enrollment.ineligible")`). Se o programa contiver critérios obrigatórios e nenhuma avaliação tiver sido anexada, a aprovação também é rejeitada (`DomainException("enrollment.assessment_required")`).
 - **Motivo obrigatório:** Rejeição, cancelamento, lista de espera e desistência exigem justificativa explícita.
-- **Participação:** Inscrições aprovadas podem originar uma `ProgramParticipation`.
+- **Participação única:** Inscrições aprovadas originam uma `ProgramParticipation` via `CreateParticipation()`. O agregado registra `HasParticipation` e `ParticipationId`, impedindo categoricamente a geração de participações duplicadas para a mesma inscrição (`DomainException("enrollment.participation_already_created")`).
 
 ### 3. `ProgramParticipation`
 - Representa o vínculo fático e contínuo do beneficiário no programa.
+- **Construção protegida:** O construtor é restrito (`internal`) e recebe obrigatoriamente a instância de `ProgramEnrollment`, garantindo que nenhuma participação possa ser criada fora do fluxo legítimo de aprovação de inscrição.
 - **Ciclo de vida:** `Active` <-> `Suspended` -> `Completed` / `Terminated`.
+- **Atomicidade e Integridade de Transição:** Todas as validações (argumentos, não nulidade/vazio de responsáveis e justificativas, regras cronológicas e transições de estado permitidas) e a criação da entrada histórica (`ParticipationHistoryEntry`) são executadas **antes** de qualquer mutação de estado ou atualização de datas no agregado. Se qualquer validação falhar, o agregado permanece intacto sem mutações parciais.
 - **Histórico:** Cada mudança de estado registra uma entrada imutável em `History` (`ParticipationHistoryEntry`) com data, motivo e responsável.
 - **Cronologia:** Nenhuma transição pode ter data anterior ao início da participação nem anterior à última transição registrada.
 
-### 4. `SocialCareEncounter` (Atendimentos)
+### 4. Avaliação de Elegibilidade (`EligibilityAssessmentResult` e Critérios)
+- **Consistência estrita:** O objeto de valor `EligibilityAssessmentResult` valida que o indicador sintético `IsEligible` seja estritamente coerente com o atendimento de todos os critérios obrigatórios (`isEligible == mandatoryCriteriaMet`). Se houver discrepância, é lançada `DomainException("eligibility.contradictory_result")`.
+- **Critérios tipados:** Cada critério avaliado (`CriterionEvaluationResult`) expõe explicitamente se é obrigatório (`IsMandatory`), suportando critérios classificatórios versus eliminatórios sem ambiguidade.
+
+### 5. `SocialCareEncounter` (Atendimentos)
 - Atendimento individual, familiar, visita domiciliar ou triagem.
 - **Não é prontuário médico:** Não registra diagnósticos clínicos (CID), prescrições de remédios ou laudos médicos.
 - **Notas sensíveis (`SensitiveCareNotes`):** Exigem finalidade operacional legítima declarada e classificação de confidencialidade.
-- **Conclusão:** A data/hora de atendimento não pode ser futura. Resumo operacional é obrigatório.
+- **Conclusão e Cancelamento:** A data/hora de atendimento não pode ser futura. Resumo operacional é obrigatório. Cancelamentos e não comparecimentos (`NoShow`) rastreiam explicitamente o responsável pelo registro (`CancelledByPersonId`, `NoShowRecordedByPersonId`). Atendimentos cancelados não admitem inclusão de evidências.
 
-### 5. `DeliveredBenefit` e `DeliveredService`
+### 6. `DeliveredBenefit` e `DeliveredService`
 - Diferenciação rigorosa:
   - Serviço agendado vs serviço prestado.
-  - Benefício concedido (`Granted`) vs benefício entregue (`Delivered`).
-- **Quantidade:** O objeto de valor `BenefitQuantity` exige valor estritamente positivo (`> 0`) e unidade de medida.
-- **Entrega:** Requer data válida (não anterior à concessão), responsável pela entrega e recebedor (que pode ser o beneficiário ou seu responsável legal via `PersonRelationship`).
+  - Benefício concedido (`Granted`) vs benefício despachado (`Dispatched`) vs entregue (`Delivered`).
+- **Quantidade do Benefício:** O objeto de valor `BenefitQuantity` exige valor estritamente positivo (`> 0`) e unidade de medida.
+- **Rastreabilidade e Auditoria de Benefícios:**
+  - `DispatchedDate` e `DispatchedByPersonId`: Registro de despacho com validação de status (`Granted`).
+  - `DeliveredDate`, `DeliveredByPersonId` e `ReceivedByPersonId`: Entrega requer data válida (não anterior à concessão ou despacho).
+  - `RevokedDate` e `RevokedByPersonId`: Revogação permitida apenas antes da entrega.
+  - `ReturnedDate` e `ReturnedByPersonId`: Devolução permitida apenas para benefícios já entregues, com data cronológica coerente e motivo explícito.
+- **Rastreabilidade e Ciclo de Serviços (`DeliveredService`):**
+  - O construtor padrão rejeita status inicial `Completed` ou `Cancelled` (`DomainException("service_delivery.invalid_initial_status")`).
+  - Para registros retroativos de serviços já executados, utiliza-se a fábrica estática explícita `DeliveredService.RecordCompleted(...)`.
+  - Preserva auditoria de agendamento (`ScheduledByPersonId`), cancelamento (`CancelledByPersonId`, `CancelledDate`) e conclusão (`DeliveredByPersonId`).
 - **Rastreabilidade contábil futura:** Preserva propriedades `ProjectId` e `FundingSourceId` para vinculação nos Stages 04 e 05.
 
-### 6. `SocialReferral` (Encaminhamentos)
+### 7. `SocialReferral` (Encaminhamentos)
 - Encaminhamento interno ou externo (CRAS, CREAS, Conselho Tutelar, Posto de Saúde, Defensoria).
 - **Distinção de serviço:** Um encaminhamento externo **não é um serviço executado pela ONG**. O ciclo só atinge `Completed` quando a instituição de destino confirmar o acolhimento/resultado.
+- **Rastreabilidade completa:** Preserva datas e responsáveis por despacho (`DispatchedDate`, `DispatchedByPersonId`), ciência/acolhimento (`AcknowledgedDate`, `AcknowledgedBy`), desfecho (`OutcomeRecordedByPersonId`) e cancelamento (`CancellationDate`, `CancelledByPersonId`).
 
-### 7. `SocialActivity` e `ActivitySession`
+### 8. `SocialActivity` e `ActivitySession`
 - Atividades agrupam encontros e sessões.
 - **Sessão:** Possui horários de início e término (`ScheduledEnd >= ScheduledStart`), local e lista de facilitadores.
-- **Frequência:** Estados: `Present`, `Absent`, `JustifiedAbsence`, `Excused`, `NotRecorded`.
-- **Invariante de Justificativa:** Ausência justificada (`JustifiedAbsence`) exige obrigatoriamente motivo/justificativa.
-- **Sessão Cancelada:** Rejeita qualquer registro de presença.
-- **Duplicidade:** Rejeita registro de presença duplicado para a mesma pessoa na mesma sessão.
+- **Frequência e Blindagem de Sessão Concluída/Cancelada:**
+  - Estados: `Present`, `Absent`, `JustifiedAbsence`, `Excused`, `NotRecorded`.
+  - Registros com `NotRecorded` ou valores fora do enum são estritamente rejeitados (`DomainException("attendance.invalid_status")`).
+  - Invariante de Justificativa: Ausência justificada (`JustifiedAbsence`) exige obrigatoriamente motivo/justificativa.
+  - Sessão Concluída (`Completed`) ou Cancelada (`Cancelled`): Rejeita qualquer inclusão ou alteração de frequência (`session.completed`, `session.cancelled`), selando o histórico contra adulterações posteriores.
+  - Duplicidade: Rejeita registro de presença duplicado para a mesma pessoa na mesma sessão. Em caso de falha, os registros existentes são integralmente preservados.
+- **Reagendamento e Cancelamento:** Registram explicitamente responsável e motivo.
 
-### 8. `SocialEvidence`
+### 9. `SocialEvidence`
 - Armazena exclusivamente **metadados e URIs lógicas**.
 - Nenhuma entidade de domínio armazena arrays de bytes de imagens ou arquivos.
 - Classificação de sensibilidade: `Standard`, `Confidential`, `Restricted`.

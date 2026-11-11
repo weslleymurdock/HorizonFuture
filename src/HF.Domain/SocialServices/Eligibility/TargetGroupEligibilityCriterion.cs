@@ -23,7 +23,7 @@ public sealed class TargetGroupEligibilityCriterion : EligibilityCriterionBase
             ? $"Applicant declared required target group '{RequiredGroup}'."
             : $"Applicant does not possess required target group '{RequiredGroup}'.";
 
-        return new CriterionEvaluationResult(Code, Name, isMet, details);
+        return new CriterionEvaluationResult(Code, Name, isMet, details, IsMandatory);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

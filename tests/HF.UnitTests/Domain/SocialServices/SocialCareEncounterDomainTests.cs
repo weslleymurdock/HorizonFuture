@@ -88,7 +88,7 @@ public sealed class SocialCareEncounterDomainTests
     }
 
     [Fact]
-    public void Cancel_RequiresReasonAndBlocksAlreadyCompleted()
+    public void Cancel_PreservesAuditAndBlocksCompletedOrCancelledModifications()
     {
         var encounter = new SocialCareEncounter(
             "person-1", "unit-1", "staff-1", EncounterType.Screening, DateTime.UtcNow);
@@ -99,10 +99,37 @@ public sealed class SocialCareEncounterDomainTests
 
         encounter.Cancel("Beneficiário comunicou impossibilidade de comparecimento", "staff-1");
         Assert.Equal(EncounterStatus.Cancelled, encounter.Status);
+        Assert.Equal("Beneficiário comunicou impossibilidade de comparecimento", encounter.CancellationReason);
+        Assert.Equal("staff-1", encounter.CancelledByPersonId);
 
         // Cannot complete cancelled
         var exComplete = Assert.Throws<DomainException>(() =>
             encounter.Complete(DateTime.UtcNow.AddMinutes(-1), "staff-1", "Resumo"));
         Assert.Equal("encounter.cannot_complete", exComplete.Code);
+
+        // Cannot attach evidence when cancelled
+        var exAttach = Assert.Throws<DomainException>(() =>
+            encounter.AttachEvidence("ev-01"));
+        Assert.Equal("encounter.cannot_modify_cancelled", exAttach.Code);
+    }
+
+    [Fact]
+    public void RecordNoShow_PreservesAuditAndRejectsOnCompleted()
+    {
+        var encounter = new SocialCareEncounter(
+            "person-1", "unit-1", "staff-1", EncounterType.Screening, DateTime.UtcNow);
+
+        encounter.RecordNoShow("recepcionista-1");
+        Assert.Equal(EncounterStatus.NoShow, encounter.Status);
+        Assert.Equal("recepcionista-1", encounter.NoShowRecordedByPersonId);
+
+        // Completed encounter rejects no-show
+        var completedEncounter = new SocialCareEncounter(
+            "person-2", "unit-1", "staff-1", EncounterType.Individual, DateTime.UtcNow.AddHours(-1));
+        completedEncounter.Complete(DateTime.UtcNow.AddMinutes(-10), "staff-1", "Atendimento realizado");
+
+        var exNoShow = Assert.Throws<DomainException>(() =>
+            completedEncounter.RecordNoShow("recepcionista-1"));
+        Assert.Equal("encounter.cannot_record_noshow", exNoShow.Code);
     }
 }

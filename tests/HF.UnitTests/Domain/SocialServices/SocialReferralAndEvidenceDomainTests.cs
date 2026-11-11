@@ -9,14 +9,15 @@ namespace HF.UnitTests.Domain.SocialServices;
 public sealed class SocialReferralAndEvidenceDomainTests
 {
     [Fact]
-    public void SocialReferral_External_DispatchesAndRecordsOutcomeFromDestination()
+    public void SocialReferral_External_DispatchesAndRecordsOutcomeFromDestination_WithFullAudit()
     {
+        var referralDate = new DateOnly(2026, 3, 1);
         var referral = new SocialReferral(
             beneficiaryPersonId: "person-1",
             destinationType: ReferralDestinationType.External,
             destinationName: "CRAS Vila Esperança",
             reason: "Encaminhamento para inclusão no Cadastro Único (CadÚnico)",
-            referralDate: new DateOnly(2026, 3, 1),
+            referralDate: referralDate,
             referredByPersonId: "assistente-social-1",
             sourceEncounterId: "encounter-001");
 
@@ -25,26 +26,37 @@ public sealed class SocialReferralAndEvidenceDomainTests
         Assert.Equal("CRAS Vila Esperança", referral.DestinationName);
         Assert.Contains(referral.DomainEvents, e => e is SocialReferralCreatedEvent);
 
-        referral.Dispatch();
+        // Dispatch with audit
+        var dispatchDate = new DateOnly(2026, 3, 2);
+        referral.Dispatch(dispatchDate, "assistente-social-1");
         Assert.Equal(ReferralStatus.Dispatched, referral.Status);
+        Assert.Equal(dispatchDate, referral.DispatchedDate);
+        Assert.Equal("assistente-social-1", referral.DispatchedByPersonId);
 
-        referral.AcknowledgeReceipt();
+        // Acknowledge with audit
+        var ackDate = new DateOnly(2026, 3, 5);
+        referral.AcknowledgeReceipt(ackDate, "recepcao-cras");
         Assert.Equal(ReferralStatus.Acknowledged, referral.Status);
+        Assert.Equal(ackDate, referral.AcknowledgedDate);
+        Assert.Equal("recepcao-cras", referral.AcknowledgedBy);
 
         // Outcome reported by CRAS
+        var outcomeDate = new DateOnly(2026, 3, 15);
         referral.RecordOutcome(
-            outcomeDate: new DateOnly(2026, 3, 15),
+            outcomeDate: outcomeDate,
             outcomeNotes: "Família acolhida pelo CRAS; CadÚnico atualizado com sucesso e NIS emitido.",
-            isSuccessful: true);
+            isSuccessful: true,
+            recordedByPersonId: "assistente-social-1");
 
         Assert.Equal(ReferralStatus.Completed, referral.Status);
-        Assert.Equal(new DateOnly(2026, 3, 15), referral.OutcomeDate);
+        Assert.Equal(outcomeDate, referral.OutcomeDate);
         Assert.True(referral.IsSuccessful);
+        Assert.Equal("assistente-social-1", referral.OutcomeRecordedByPersonId);
         Assert.Contains(referral.DomainEvents, e => e is SocialReferralCompletedEvent);
     }
 
     [Fact]
-    public void SocialReferral_Cancel_RequiresReasonAndBlocksCompleted()
+    public void SocialReferral_Cancel_RequiresReasonAndStoresAudit()
     {
         var referral = new SocialReferral(
             "person-1", ReferralDestinationType.Internal, "Departamento Jurídico", "Orientação civil",
@@ -53,12 +65,15 @@ public sealed class SocialReferralAndEvidenceDomainTests
         var exNoReason = Assert.Throws<DomainException>(() => referral.Cancel("   "));
         Assert.Equal("referral.cancellation_reason_required", exNoReason.Code);
 
-        referral.Cancel("Demanda solucionada internamente pelo serviço social");
+        var cancelDate = new DateOnly(2026, 3, 3);
+        referral.Cancel("Demanda solucionada internamente pelo serviço social", "assistente-social-1", cancelDate);
         Assert.Equal(ReferralStatus.Cancelled, referral.Status);
+        Assert.Equal("assistente-social-1", referral.CancelledByPersonId);
+        Assert.Equal(cancelDate, referral.CancellationDate);
         Assert.Contains(referral.DomainEvents, e => e is SocialReferralCancelledEvent);
 
         var exOutcome = Assert.Throws<DomainException>(() =>
-            referral.RecordOutcome(new DateOnly(2026, 3, 2), "Notas", true));
+            referral.RecordOutcome(new DateOnly(2026, 3, 4), "Notas", true));
         Assert.Equal("referral.cannot_complete_cancelled", exOutcome.Code);
     }
 

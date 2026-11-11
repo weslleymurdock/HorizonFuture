@@ -31,7 +31,8 @@ public sealed class TerritoryEligibilityCriterion : EligibilityCriterionBase
                 Code,
                 Name,
                 isMet: false,
-                "Applicant territory was not provided.");
+                "Applicant territory was not provided.",
+                IsMandatory);
         }
 
         var isMet = AllowedTerritories.Contains(profile.Territory.Trim(), StringComparer.OrdinalIgnoreCase);
@@ -39,7 +40,7 @@ public sealed class TerritoryEligibilityCriterion : EligibilityCriterionBase
             ? $"Applicant territory '{profile.Territory}' is covered."
             : $"Applicant territory '{profile.Territory}' is not within eligible territories ({string.Join(", ", AllowedTerritories)}).";
 
-        return new CriterionEvaluationResult(Code, Name, isMet, details);
+        return new CriterionEvaluationResult(Code, Name, isMet, details, IsMandatory);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

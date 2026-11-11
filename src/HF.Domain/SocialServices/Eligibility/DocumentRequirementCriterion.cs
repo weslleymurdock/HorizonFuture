@@ -23,7 +23,7 @@ public sealed class DocumentRequirementCriterion : EligibilityCriterionBase
             ? $"Required document '{RequiredDocumentType}' was submitted."
             : $"Required document '{RequiredDocumentType}' was not submitted.";
 
-        return new CriterionEvaluationResult(Code, Name, isMet, details);
+        return new CriterionEvaluationResult(Code, Name, isMet, details, IsMandatory);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

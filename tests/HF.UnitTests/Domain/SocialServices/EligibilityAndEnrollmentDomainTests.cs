@@ -66,6 +66,109 @@ public sealed class EligibilityAndEnrollmentDomainTests
     }
 
     [Fact]
+    public void AssessmentResult_ContradictoryEligibility_ThrowsDomainException()
+    {
+        var mandatoryFailing = new CriterionEvaluationResult("AGE", "Idade", false, "Idade inadequada", isMandatory: true);
+        var optionalFailing = new CriterionEvaluationResult("DOC", "Doc", false, "Doc ausente", isMandatory: false);
+        var mandatoryPassing = new CriterionEvaluationResult("TERRITORY", "Região", true, "Região atendida", isMandatory: true);
+
+        // Contradiction 1: IsEligible = true when mandatory criterion failed
+        var exContradictory1 = Assert.Throws<DomainException>(() =>
+            new EligibilityAssessmentResult(
+                isEligible: true,
+                evaluatedCriteria: [mandatoryFailing, mandatoryPassing],
+                assessedOn: new DateOnly(2026, 3, 1),
+                assessedBy: "staff-1"));
+        Assert.Equal("eligibility.contradictory_result", exContradictory1.Code);
+
+        // Contradiction 2: IsEligible = false when all mandatory criteria passed and only optional failed
+        var exContradictory2 = Assert.Throws<DomainException>(() =>
+            new EligibilityAssessmentResult(
+                isEligible: false,
+                evaluatedCriteria: [mandatoryPassing, optionalFailing],
+                assessedOn: new DateOnly(2026, 3, 1),
+                assessedBy: "staff-1"));
+        Assert.Equal("eligibility.contradictory_result", exContradictory2.Code);
+
+        // Factory Create() computes correctly without contradiction
+        var createdPositive = EligibilityAssessmentResult.Create(
+            [mandatoryPassing, optionalFailing],
+            new DateOnly(2026, 3, 1),
+            "staff-1");
+        Assert.True(createdPositive.IsEligible);
+
+        var createdNegative = EligibilityAssessmentResult.Create(
+            [mandatoryFailing, mandatoryPassing],
+            new DateOnly(2026, 3, 1),
+            "staff-1");
+        Assert.False(createdNegative.IsEligible);
+    }
+
+    [Fact]
+    public void Enrollment_Approve_WithIneligibleAssessment_ThrowsAndPreservesState()
+    {
+        var period = new OperatingPeriod(new DateOnly(2026, 1, 1));
+        var program = new SocialProgram("Programa Inclusivo", "Comunidade", "unit-1", period);
+        program.Activate();
+
+        var person = new Person("Marcos Silva");
+        var enrollment = new ProgramEnrollment(program, person.Id, new DateOnly(2026, 2, 1), "staff-1");
+        enrollment.StartReview("assistente-social-1");
+
+        var failingResult = new CriterionEvaluationResult("AGE", "Idade", false, "Fora da faixa", isMandatory: true);
+        var negativeAssessment = EligibilityAssessmentResult.Create([failingResult], new DateOnly(2026, 2, 2), "assistente-social-1");
+
+        var exIneligible = Assert.Throws<DomainException>(() =>
+            enrollment.Approve(program, "coordenador-1", new DateOnly(2026, 2, 5), negativeAssessment));
+        Assert.Equal("enrollment.ineligible", exIneligible.Code);
+
+        // Verify state is preserved
+        Assert.Equal(EnrollmentStatus.UnderReview, enrollment.Status);
+        Assert.Null(enrollment.DecisionDate);
+        Assert.Null(enrollment.DecidedBy);
+        Assert.DoesNotContain(enrollment.DomainEvents, e => e is ProgramEnrollmentApprovedEvent);
+    }
+
+    [Fact]
+    public void Enrollment_Approve_WithoutAssessment_RejectsIfProgramHasMandatoryCriteria()
+    {
+        var period = new OperatingPeriod(new DateOnly(2026, 1, 1));
+        var program = new SocialProgram("Programa Rigoroso", "Comunidade", "unit-1", period);
+        program.AddEligibilityCriterion(new AgeRangeEligibilityCriterion("AGE", "Idade", 6, 12, isMandatory: true));
+        program.Activate();
+
+        var person = new Person("Ana Clara");
+        var enrollment = new ProgramEnrollment(program, person.Id, new DateOnly(2026, 2, 1), "staff-1");
+
+        var exRequired = Assert.Throws<DomainException>(() =>
+            enrollment.Approve(program, "coordenador-1", new DateOnly(2026, 2, 5), assessment: null));
+        Assert.Equal("enrollment.assessment_required", exRequired.Code);
+        Assert.Equal(EnrollmentStatus.Pending, enrollment.Status);
+    }
+
+    [Fact]
+    public void Enrollment_AttachAssessment_RejectsInIncompatibleStates()
+    {
+        var period = new OperatingPeriod(new DateOnly(2026, 1, 1));
+        var program = new SocialProgram("Programa Aprovado", "Comunidade", "unit-1", period);
+        program.Activate();
+
+        var person = new Person("Joao Victor");
+        var enrollment = new ProgramEnrollment(program, person.Id, new DateOnly(2026, 2, 1), "staff-1");
+
+        var passingResult = new CriterionEvaluationResult("AGE", "Idade", true, "Ok", isMandatory: true);
+        var assessment = EligibilityAssessmentResult.Create([passingResult], new DateOnly(2026, 2, 2), "staff-1");
+
+        enrollment.Approve(program, "coordenador-1", new DateOnly(2026, 2, 5), assessment);
+        Assert.Equal(EnrollmentStatus.Approved, enrollment.Status);
+
+        // Cannot attach new assessment when already approved
+        var exNotAllowed = Assert.Throws<DomainException>(() =>
+            enrollment.AttachAssessment(assessment));
+        Assert.Equal("enrollment.assessment_not_allowed", exNotAllowed.Code);
+    }
+
+    [Fact]
     public void Enrollment_CanOnlyBeSubmittedForActiveProgram()
     {
         var period = new OperatingPeriod(new DateOnly(2026, 1, 1));

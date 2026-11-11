@@ -39,7 +39,8 @@ public sealed class AgeRangeEligibilityCriterion : EligibilityCriterionBase
                 Code,
                 Name,
                 isMet: false,
-                "Date of birth was not provided for age evaluation.");
+                "Date of birth was not provided for age evaluation.",
+                IsMandatory);
         }
 
         var isMet = age.Value >= MinAge && age.Value <= MaxAge;
@@ -47,7 +48,7 @@ public sealed class AgeRangeEligibilityCriterion : EligibilityCriterionBase
             ? $"Age {age.Value} is within the required range of {MinAge} to {MaxAge} years."
             : $"Age {age.Value} is outside the required range of {MinAge} to {MaxAge} years.";
 
-        return new CriterionEvaluationResult(Code, Name, isMet, details);
+        return new CriterionEvaluationResult(Code, Name, isMet, details, IsMandatory);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

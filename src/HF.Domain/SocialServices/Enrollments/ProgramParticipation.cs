@@ -10,31 +10,37 @@ public sealed class ProgramParticipation : AggregateRoot
 
     private ProgramParticipation() { }
 
-    public ProgramParticipation(
-        string programId,
-        string beneficiaryPersonId,
-        string enrollmentId,
+    internal ProgramParticipation(
+        ProgramEnrollment enrollment,
         DateOnly startDate,
         string startedBy,
         string? id = null) : base(id)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(programId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(beneficiaryPersonId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(enrollmentId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(startedBy);
+        ArgumentNullException.ThrowIfNull(enrollment);
+        if (string.IsNullOrWhiteSpace(startedBy))
+        {
+            throw new ArgumentException("StartedBy cannot be blank.", nameof(startedBy));
+        }
 
-        ProgramId = programId.Trim();
-        BeneficiaryPersonId = beneficiaryPersonId.Trim();
-        EnrollmentId = enrollmentId.Trim();
-        StartDate = startDate;
-        Status = ParticipationStatus.Active;
+        if (enrollment.Status != EnrollmentStatus.Approved)
+        {
+            throw new DomainException("enrollment.not_approved", "Only an approved enrollment can initiate active participation.");
+        }
 
-        _history.Add(new ParticipationHistoryEntry(
+        var initialEntry = new ParticipationHistoryEntry(
             startDate,
             ParticipationStatus.Active,
             ParticipationStatus.Active,
             "Initial participation started",
-            startedBy));
+            startedBy.Trim());
+
+        ProgramId = enrollment.ProgramId;
+        BeneficiaryPersonId = enrollment.BeneficiaryPersonId;
+        EnrollmentId = enrollment.Id;
+        StartDate = startDate;
+        Status = ParticipationStatus.Active;
+
+        _history.Add(initialEntry);
 
         AddDomainEvent(new ProgramParticipationStartedEvent(Id, ProgramId, BeneficiaryPersonId, StartDate));
     }
@@ -60,14 +66,20 @@ public sealed class ProgramParticipation : AggregateRoot
             throw new DomainException("participation.suspension_reason_required", "A reason is required to suspend participation.");
         }
 
+        if (string.IsNullOrWhiteSpace(changedBy))
+        {
+            throw new ArgumentException("ChangedBy cannot be blank.", nameof(changedBy));
+        }
+
         EnsureChronology(date);
 
-        var previousStatus = Status;
+        var entry = new ParticipationHistoryEntry(date, Status, ParticipationStatus.Suspended, reason.Trim(), changedBy.Trim());
+
         Status = ParticipationStatus.Suspended;
         UpdatedAt = DateTime.UtcNow;
+        _history.Add(entry);
 
-        _history.Add(new ParticipationHistoryEntry(date, previousStatus, Status, reason, changedBy));
-        AddDomainEvent(new ProgramParticipationSuspendedEvent(Id, date, reason));
+        AddDomainEvent(new ProgramParticipationSuspendedEvent(Id, date, reason.Trim()));
     }
 
     public void Resume(DateOnly date, string changedBy)
@@ -77,13 +89,19 @@ public sealed class ProgramParticipation : AggregateRoot
             throw new DomainException("participation.not_suspended", $"Cannot resume participation in status '{Status}'.");
         }
 
+        if (string.IsNullOrWhiteSpace(changedBy))
+        {
+            throw new ArgumentException("ChangedBy cannot be blank.", nameof(changedBy));
+        }
+
         EnsureChronology(date);
 
-        var previousStatus = Status;
+        var entry = new ParticipationHistoryEntry(date, Status, ParticipationStatus.Active, "Participation resumed", changedBy.Trim());
+
         Status = ParticipationStatus.Active;
         UpdatedAt = DateTime.UtcNow;
+        _history.Add(entry);
 
-        _history.Add(new ParticipationHistoryEntry(date, previousStatus, Status, "Participation resumed", changedBy));
         AddDomainEvent(new ProgramParticipationResumedEvent(Id, date));
     }
 
@@ -94,14 +112,20 @@ public sealed class ProgramParticipation : AggregateRoot
             throw new DomainException("participation.cannot_complete", $"Cannot complete participation in status '{Status}'. Only active participations can be completed.");
         }
 
+        if (string.IsNullOrWhiteSpace(changedBy))
+        {
+            throw new ArgumentException("ChangedBy cannot be blank.", nameof(changedBy));
+        }
+
         EnsureChronology(date);
 
-        var previousStatus = Status;
+        var entry = new ParticipationHistoryEntry(date, Status, ParticipationStatus.Completed, notes ?? "Participation successfully completed", changedBy.Trim());
+
         Status = ParticipationStatus.Completed;
         EndDate = date;
         UpdatedAt = DateTime.UtcNow;
+        _history.Add(entry);
 
-        _history.Add(new ParticipationHistoryEntry(date, previousStatus, Status, notes ?? "Participation successfully completed", changedBy));
         AddDomainEvent(new ProgramParticipationCompletedEvent(Id, date, notes));
     }
 
@@ -117,15 +141,21 @@ public sealed class ProgramParticipation : AggregateRoot
             throw new DomainException("participation.termination_reason_required", "A reason is required to terminate participation.");
         }
 
+        if (string.IsNullOrWhiteSpace(changedBy))
+        {
+            throw new ArgumentException("ChangedBy cannot be blank.", nameof(changedBy));
+        }
+
         EnsureChronology(date);
 
-        var previousStatus = Status;
+        var entry = new ParticipationHistoryEntry(date, Status, ParticipationStatus.Terminated, reason.Trim(), changedBy.Trim());
+
         Status = ParticipationStatus.Terminated;
         EndDate = date;
         UpdatedAt = DateTime.UtcNow;
+        _history.Add(entry);
 
-        _history.Add(new ParticipationHistoryEntry(date, previousStatus, Status, reason, changedBy));
-        AddDomainEvent(new ProgramParticipationTerminatedEvent(Id, date, reason));
+        AddDomainEvent(new ProgramParticipationTerminatedEvent(Id, date, reason.Trim()));
     }
 
     private void EnsureChronology(DateOnly date)

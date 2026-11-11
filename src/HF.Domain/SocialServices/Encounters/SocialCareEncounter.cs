@@ -47,6 +47,8 @@ public sealed class SocialCareEncounter : AggregateRoot
     public string? OperationalSummary { get; private set; }
     public SensitiveCareNotes? SensitiveNotes { get; private set; }
     public string? CancellationReason { get; private set; }
+    public string? CancelledByPersonId { get; private set; }
+    public string? NoShowRecordedByPersonId { get; private set; }
 
     public IReadOnlyList<string> EvidenceIds => _evidenceIds.AsReadOnly();
 
@@ -76,7 +78,10 @@ public sealed class SocialCareEncounter : AggregateRoot
             throw new DomainException("encounter.summary_required", "An operational summary is required when completing an encounter.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(attendantPersonId);
+        if (string.IsNullOrWhiteSpace(attendantPersonId))
+        {
+            throw new ArgumentException("AttendantPersonId cannot be blank.", nameof(attendantPersonId));
+        }
 
         EncounterDateTime = encounterDateTime;
         AttendantPersonId = attendantPersonId.Trim();
@@ -105,13 +110,17 @@ public sealed class SocialCareEncounter : AggregateRoot
             throw new DomainException("encounter.cancellation_reason_required", "A reason is required to cancel an encounter.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(cancelledBy);
+        if (string.IsNullOrWhiteSpace(cancelledBy))
+        {
+            throw new ArgumentException("CancelledBy cannot be blank.", nameof(cancelledBy));
+        }
 
         Status = EncounterStatus.Cancelled;
         CancellationReason = reason.Trim();
+        CancelledByPersonId = cancelledBy.Trim();
         UpdatedAt = DateTime.UtcNow;
 
-        AddDomainEvent(new SocialCareEncounterCancelledEvent(Id, CancellationReason, cancelledBy.Trim()));
+        AddDomainEvent(new SocialCareEncounterCancelledEvent(Id, CancellationReason, CancelledByPersonId));
     }
 
     public void RecordNoShow(string recordedBy)
@@ -121,14 +130,23 @@ public sealed class SocialCareEncounter : AggregateRoot
             throw new DomainException("encounter.cannot_record_noshow", $"Cannot mark an encounter as no-show when in status '{Status}'.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(recordedBy);
+        if (string.IsNullOrWhiteSpace(recordedBy))
+        {
+            throw new ArgumentException("RecordedBy cannot be blank.", nameof(recordedBy));
+        }
 
         Status = EncounterStatus.NoShow;
+        NoShowRecordedByPersonId = recordedBy.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void AttachEvidence(string evidenceId)
     {
+        if (Status == EncounterStatus.Cancelled)
+        {
+            throw new DomainException("encounter.cannot_modify_cancelled", "Cannot attach evidence to a cancelled encounter.");
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
 
         if (!_evidenceIds.Contains(evidenceId.Trim()))

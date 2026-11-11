@@ -29,7 +29,8 @@ public sealed class CustomEligibilityCriterion : EligibilityCriterionBase
                 Code,
                 Name,
                 isMet: false,
-                $"Required attribute '{Key}' was not provided.");
+                $"Required attribute '{Key}' was not provided.",
+                IsMandatory);
         }
 
         var isMet = string.Equals(actualValue.Trim(), ExpectedValue, StringComparison.OrdinalIgnoreCase);
@@ -37,7 +38,7 @@ public sealed class CustomEligibilityCriterion : EligibilityCriterionBase
             ? $"Attribute '{Key}' matches expected value."
             : $"Attribute '{Key}' value '{actualValue}' did not match expected '{ExpectedValue}'.";
 
-        return new CriterionEvaluationResult(Code, Name, isMet, details);
+        return new CriterionEvaluationResult(Code, Name, isMet, details, IsMandatory);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()

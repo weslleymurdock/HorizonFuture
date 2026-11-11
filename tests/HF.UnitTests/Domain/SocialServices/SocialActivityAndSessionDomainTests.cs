@@ -52,18 +52,27 @@ public sealed class SocialActivityAndSessionDomainTests
     }
 
     [Fact]
-    public void Session_Attendance_RecordsPresentAbsentAndJustifiedAbsence()
+    public void Session_Attendance_RecordsInAllowedStates_AndRejectsInvalidStatus()
     {
         var session = new ActivitySession(
             "act-1", "prog-1", DateTime.UtcNow.AddHours(-3), DateTime.UtcNow.AddHours(-1), "Sala 1", "Sessão 01");
 
+        // Record in Scheduled state is allowed (pre-registration / check-in)
+        session.RecordAttendance("person-scheduled", AttendanceStatus.Present, "educador-1");
+        Assert.Single(session.Attendance);
+
+        // Start session (InProgress)
         session.Start(DateTime.UtcNow.AddHours(-3));
+        Assert.Equal(ActivitySessionStatus.InProgress, session.Status);
 
         // Present
         session.RecordAttendance("person-1", AttendanceStatus.Present, "educador-1");
 
         // Absent
         session.RecordAttendance("person-2", AttendanceStatus.Absent, "educador-1");
+
+        // Excused
+        session.RecordAttendance("person-excused", AttendanceStatus.Excused, "educador-1");
 
         // Justified absence without justification throws
         var exJustification = Assert.Throws<DomainException>(() =>
@@ -73,11 +82,15 @@ public sealed class SocialActivityAndSessionDomainTests
         // Justified absence with valid justification
         session.RecordAttendance("person-3", AttendanceStatus.JustifiedAbsence, "educador-1", "Atestado médico de consulta pediátrica");
 
-        Assert.Equal(3, session.Attendance.Count);
-        Assert.Equal(AttendanceStatus.Present, session.Attendance.First(a => a.BeneficiaryPersonId == "person-1").Status);
-        Assert.Equal(AttendanceStatus.Absent, session.Attendance.First(a => a.BeneficiaryPersonId == "person-2").Status);
-        Assert.Equal(AttendanceStatus.JustifiedAbsence, session.Attendance.First(a => a.BeneficiaryPersonId == "person-3").Status);
-        Assert.Equal("Atestado médico de consulta pediátrica", session.Attendance.First(a => a.BeneficiaryPersonId == "person-3").Justification);
+        // Invalid enum value rejected
+        var exInvalidEnum = Assert.Throws<DomainException>(() =>
+            session.RecordAttendance("person-4", (AttendanceStatus)999, "educador-1"));
+        Assert.Equal("attendance.invalid_status", exInvalidEnum.Code);
+
+        // NotRecorded rejected as explicit record
+        var exNotRecorded = Assert.Throws<DomainException>(() =>
+            session.RecordAttendance("person-5", AttendanceStatus.NotRecorded, "educador-1"));
+        Assert.Equal("attendance.invalid_status", exNotRecorded.Code);
 
         // Duplicate attendance for same person is rejected
         var exDuplicate = Assert.Throws<DomainException>(() =>
@@ -91,7 +104,30 @@ public sealed class SocialActivityAndSessionDomainTests
     }
 
     [Fact]
-    public void Session_Cancelled_RejectsAttendanceRecordingAndFurtherAlteration()
+    public void Session_Completed_RejectsAttendanceModificationAndPreservesRecords()
+    {
+        var session = new ActivitySession(
+            "act-1", "prog-1", DateTime.UtcNow.AddHours(-2), DateTime.UtcNow.AddHours(-1), "Sala 1", "Sessão Concluída");
+
+        session.Start(DateTime.UtcNow.AddHours(-2));
+        session.RecordAttendance("person-1", AttendanceStatus.Present, "educador-1");
+        session.Complete(DateTime.UtcNow.AddHours(-1));
+
+        Assert.Equal(ActivitySessionStatus.Completed, session.Status);
+        Assert.Single(session.Attendance);
+
+        // Attempting to record attendance on completed session must be rejected
+        var exCompleted = Assert.Throws<DomainException>(() =>
+            session.RecordAttendance("person-2", AttendanceStatus.Present, "educador-1"));
+        Assert.Equal("session.completed", exCompleted.Code);
+
+        // Verify previous records remain intact
+        Assert.Single(session.Attendance);
+        Assert.Equal("person-1", session.Attendance[0].BeneficiaryPersonId);
+    }
+
+    [Fact]
+    public void Session_Cancelled_RejectsAttendanceRecordingAndStoresCancellationAudit()
     {
         var session = new ActivitySession(
             "act-1", "prog-1", DateTime.UtcNow.AddDays(1), DateTime.UtcNow.AddDays(1).AddHours(2), "Quadra Poliesportiva", "Treino de Futsal");
@@ -99,6 +135,7 @@ public sealed class SocialActivityAndSessionDomainTests
         session.Cancel("Chuva forte e alagamento na via de acesso", "coordenador-1");
         Assert.Equal(ActivitySessionStatus.Cancelled, session.Status);
         Assert.Equal("Chuva forte e alagamento na via de acesso", session.CancellationReason);
+        Assert.Equal("coordenador-1", session.CancelledByPersonId);
 
         var exAttendance = Assert.Throws<DomainException>(() =>
             session.RecordAttendance("person-1", AttendanceStatus.Present, "educador-1"));

@@ -238,20 +238,14 @@ public sealed class SocialProgram : AggregateRoot
         ArgumentException.ThrowIfNullOrWhiteSpace(assessedBy);
 
         var evaluations = new List<CriterionEvaluationResult>();
-        var isEligible = true;
 
         foreach (var criterion in _eligibilityCriteria)
         {
             var result = criterion.Evaluate(profile, referenceDate);
             evaluations.Add(result);
-
-            if (criterion.IsMandatory && !result.IsMet)
-            {
-                isEligible = false;
-            }
         }
 
-        return new EligibilityAssessmentResult(isEligible, evaluations, referenceDate, assessedBy, notes);
+        return EligibilityAssessmentResult.Create(evaluations, referenceDate, assessedBy, notes);
     }
 
     private void EnsureModifiable()

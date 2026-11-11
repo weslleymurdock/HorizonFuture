@@ -51,6 +51,8 @@ public sealed class ActivitySession : AggregateRoot
     public string Location { get; private set; } = string.Empty;
     public ActivitySessionStatus Status { get; private set; }
     public string? CancellationReason { get; private set; }
+    public string? CancelledByPersonId { get; private set; }
+    public string? RescheduledByPersonId { get; private set; }
 
     public IReadOnlyList<SessionFacilitator> Facilitators => _facilitators.AsReadOnly();
     public IReadOnlyList<SessionAttendanceRecord> Attendance => _attendance.AsReadOnly();
@@ -124,16 +126,20 @@ public sealed class ActivitySession : AggregateRoot
             throw new DomainException("session.cancellation_reason_required", "A reason is required to cancel a session.");
         }
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(cancelledBy);
+        if (string.IsNullOrWhiteSpace(cancelledBy))
+        {
+            throw new ArgumentException("CancelledBy cannot be blank.", nameof(cancelledBy));
+        }
 
         Status = ActivitySessionStatus.Cancelled;
         CancellationReason = reason.Trim();
+        CancelledByPersonId = cancelledBy.Trim();
         UpdatedAt = DateTime.UtcNow;
 
         AddDomainEvent(new ActivitySessionCancelledEvent(Id, ActivityId, CancellationReason));
     }
 
-    public void Reschedule(DateTime newStart, DateTime newEnd, string reason)
+    public void Reschedule(DateTime newStart, DateTime newEnd, string reason, string? rescheduledBy = null)
     {
         EnsureNotFinished();
 
@@ -150,6 +156,7 @@ public sealed class ActivitySession : AggregateRoot
         ScheduledStart = newStart;
         ScheduledEnd = newEnd;
         Status = ActivitySessionStatus.Rescheduled;
+        RescheduledByPersonId = string.IsNullOrWhiteSpace(rescheduledBy) ? null : rescheduledBy.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -159,9 +166,26 @@ public sealed class ActivitySession : AggregateRoot
         string recordedByPersonId,
         string? justification = null)
     {
+        if (Status == ActivitySessionStatus.Completed)
+        {
+            throw new DomainException("session.completed", "Attendance cannot be recorded for a completed session.");
+        }
+
         if (Status == ActivitySessionStatus.Cancelled)
         {
             throw new DomainException("session.cancelled", "Cannot record attendance for a cancelled session.");
+        }
+
+        if (Status != ActivitySessionStatus.Scheduled &&
+            Status != ActivitySessionStatus.Rescheduled &&
+            Status != ActivitySessionStatus.InProgress)
+        {
+            throw new DomainException("session.invalid_state_for_attendance", $"Cannot record attendance in session status '{Status}'.");
+        }
+
+        if (!Enum.IsDefined(status) || status == AttendanceStatus.NotRecorded)
+        {
+            throw new DomainException("attendance.invalid_status", "The attendance status is invalid.");
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(beneficiaryPersonId);
@@ -173,7 +197,8 @@ public sealed class ActivitySession : AggregateRoot
             throw new DomainException("attendance.duplicate_record", $"Attendance has already been recorded for participant '{trimmedPersonId}' in this session.");
         }
 
-        var record = new SessionAttendanceRecord(trimmedPersonId, status, recordedByPersonId, justification);
+        // Validate record construction (including justification requirement) BEFORE adding
+        var record = new SessionAttendanceRecord(trimmedPersonId, status, recordedByPersonId.Trim(), justification);
         _attendance.Add(record);
         UpdatedAt = DateTime.UtcNow;
 
