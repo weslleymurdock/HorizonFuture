@@ -33,6 +33,17 @@ public sealed class Person : AggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void Reactivate()
+    {
+        if (Status != IdentityStatus.Archived)
+        {
+            throw new DomainException("identity.not_archived", "Only an archived identity can be reactivated.");
+        }
+
+        Status = IdentityStatus.Active;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     private void EnsureActive()
     {
         if (Status != IdentityStatus.Active)

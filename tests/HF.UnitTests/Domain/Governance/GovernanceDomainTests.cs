@@ -30,10 +30,10 @@ public sealed class GovernanceDomainTests
         var merge = new IdentityMerge("source", "target", IdentityKind.Person, "Confirmed duplicate");
         var completion = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc);
 
-        Assert.Throws<DomainException>((Action)(() => merge.Complete(completion)));
+        Assert.Throws<DomainException>((Action)(() => merge.Complete(completion, "reviewer")));
 
-        merge.Approve(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        merge.Complete(completion);
+        merge.Approve(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), "reviewer");
+        merge.Complete(completion, "operator");
 
         Assert.Equal(IdentityMergeStatus.Completed, merge.Status);
     }

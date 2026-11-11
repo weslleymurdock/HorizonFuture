@@ -27,6 +27,11 @@ public sealed class Department : EntityBase
 
     public void Archive()
     {
+        if (!IsActive)
+        {
+            return;
+        }
+
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }

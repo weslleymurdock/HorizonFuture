@@ -20,6 +20,33 @@ carry an optional `PersonId` reference to the canonical identity while preservin
 education-specific fields and existing `UserId` compatibility links. See
 `docs/guidelines/organization-and-stakeholders.md` for the mapping and invariants.
 
+## Stabilization status
+
+The domain baseline was hardened with hierarchy movement and cycle protection, scoped normalized
+name uniqueness, archive guards, identity reactivation, membership and relationship transition
+guards, Unicode-aware deterministic matching, and merge operator audit fields. A follow-up EF
+migration records the new merge audit columns.
+
+Backend acceptance validation is complete. Test execution is an external-environment requirement
+for this repository: backend tests must be run outside the sandbox, on a host with the required
+.NET SDK and a functioning xUnit adapter.
+
+Required external validation commands:
+
+```powershell
+dotnet restore HorizonFuture.slnx
+dotnet build HorizonFuture.slnx --no-restore
+dotnet test tests\HF.UnitTests\HF.UnitTests.csproj
+```
+
+The external execution record includes the host, SDK, exact backend commands, and literal test
+totals. UI tests are intentionally excluded because no interface implementation is part of Stage
+02.
+
+Backend unit tests are intentionally isolated from `HF.Shared`, `HF.Client`, MAUI, and browser/UI
+dependencies. Shared Razor component and route tests live in `HF.UITests`; they are not part of
+the Stage 02 backend acceptance command.
+
 ## Work
 - Define the NGO profile, legal/registration identifiers, addresses, contacts, governance bodies, units, departments, and operating locations.
 - Model users, roles, capabilities, invitations, memberships, approval authority, and scoped access to units/programs/projects.

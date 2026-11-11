@@ -59,9 +59,31 @@ erDiagram
 - Documento normalizado combinado com nome ou data de nascimento é uma correspondência exata;
   dois sinais sem documento produzem apenas uma possível duplicidade.
 - `IdentityMerge` exige proposta, aprovação e conclusão; fonte e destino, motivo e timestamps
-  permanecem preservados. Um merge concluído não pode ser rejeitado.
+  permanecem preservados, incluindo os operadores de aprovação, conclusão ou rejeição. Um merge
+  concluído não pode ser rejeitado ou repetido.
 - A implementação não apaga registros referenciados. A migração de referências para o destino
   deve ocorrer em uma transação de aplicação/persistência autorizada.
+
+## Estabilização
+
+- A hierarquia de unidades é alterada somente por `Organization.MoveUnit`, que rejeita
+  autorreferência, unidade externa e ciclos indiretos.
+- Nomes de unidades e departamentos são comparados com espaços normalizados dentro do escopo da
+  organização; a mesma regra não impõe unicidade entre organizações.
+- Unidades com subordinadas ativas não podem ser arquivadas. Arquivamento repetido é idempotente
+  para departamentos, enquanto operações em memberships, relacionamentos, mandatos e autoridades
+  encerrados são rejeitadas.
+- Identidades podem ser reativadas explicitamente. Atualizações de identidades arquivadas são
+  rejeitadas.
+- A normalização de matching remove marcas Unicode, normaliza caixa e espaços, e nunca classifica
+  nomes iguais isoladamente como correspondência exata.
+
+## Validação externa obrigatória
+
+Os testes deste estágio devem ser executados fora da sandbox. A sessão de implementação validou
+compilação e descoberta das migrações, mas o adaptador local reportou zero testes descobertos;
+isso não é resultado aprovado. A aceitação exige registrar, em ambiente externo, o SDK/workloads,
+os comandos executados e os totais literais de testes unitários, regressão, UI e autenticação.
 
 ## Privacidade e ciclo de vida
 

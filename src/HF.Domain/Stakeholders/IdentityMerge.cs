@@ -36,39 +36,50 @@ public sealed class IdentityMerge : AggregateRoot
     public IdentityMergeStatus Status { get; private set; }
     public DateTime? ApprovedAtUtc { get; private set; }
     public DateTime? CompletedAtUtc { get; private set; }
+    public string? ApprovedBy { get; private set; }
+    public string? CompletedBy { get; private set; }
+    public DateTime? RejectedAtUtc { get; private set; }
+    public string? RejectedBy { get; private set; }
 
-    public void Approve(DateTime approvedAtUtc)
+    public void Approve(DateTime approvedAtUtc, string approvedBy)
     {
         if (Status != IdentityMergeStatus.Proposed || approvedAtUtc.Kind != DateTimeKind.Utc)
         {
             throw new DomainException("identity_merge.invalid_approval", "Only a proposed merge can be approved with a UTC timestamp.");
         }
 
+        ArgumentException.ThrowIfNullOrWhiteSpace(approvedBy);
         Status = IdentityMergeStatus.Approved;
         ApprovedAtUtc = approvedAtUtc;
+        ApprovedBy = approvedBy.Trim();
         UpdatedAt = approvedAtUtc;
     }
 
-    public void Complete(DateTime completedAtUtc)
+    public void Complete(DateTime completedAtUtc, string completedBy)
     {
         if (Status != IdentityMergeStatus.Approved || completedAtUtc.Kind != DateTimeKind.Utc || completedAtUtc < ApprovedAtUtc)
         {
             throw new DomainException("identity_merge.invalid_completion", "Only an approved merge can be completed with a valid UTC timestamp.");
         }
 
+        ArgumentException.ThrowIfNullOrWhiteSpace(completedBy);
         Status = IdentityMergeStatus.Completed;
         CompletedAtUtc = completedAtUtc;
+        CompletedBy = completedBy.Trim();
         UpdatedAt = completedAtUtc;
     }
 
-    public void Reject()
+    public void Reject(string rejectedBy)
     {
         if (Status == IdentityMergeStatus.Completed)
         {
             throw new DomainException("identity_merge.completed", "A completed merge cannot be rejected.");
         }
 
+        ArgumentException.ThrowIfNullOrWhiteSpace(rejectedBy);
         Status = IdentityMergeStatus.Rejected;
+        RejectedAtUtc = DateTime.UtcNow;
+        RejectedBy = rejectedBy.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 

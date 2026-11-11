@@ -83,6 +83,9 @@ public sealed class IdentityMergeConfiguration : IEntityTypeConfiguration<Identi
         builder.Property(entity => entity.SourceIdentityId).HasMaxLength(36).IsRequired();
         builder.Property(entity => entity.TargetIdentityId).HasMaxLength(36).IsRequired();
         builder.Property(entity => entity.Reason).HasMaxLength(1000).IsRequired();
+        builder.Property(entity => entity.ApprovedBy).HasMaxLength(100);
+        builder.Property(entity => entity.CompletedBy).HasMaxLength(100);
+        builder.Property(entity => entity.RejectedBy).HasMaxLength(100);
         builder.HasIndex(entity => new { entity.SourceIdentityId, entity.TargetIdentityId }).IsUnique();
     }
 }

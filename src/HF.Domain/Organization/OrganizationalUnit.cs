@@ -29,6 +29,12 @@ public sealed class OrganizationalUnit : EntityBase
         UpdatedAt = DateTime.UtcNow;
     }
 
+    internal void ChangeParent(string? parentUnitId)
+    {
+        ParentUnitId = parentUnitId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void Deactivate(DateOnly effectiveUntil)
     {
         if (Status != OrganizationalUnitStatus.Active)

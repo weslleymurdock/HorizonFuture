@@ -55,4 +55,31 @@ public sealed class StakeholderDomainTests
 
         Assert.Equal("account_link.already_unlinked", exception.Code);
     }
+
+    [Fact]
+    public void IdentityMatching_NormalizesAccentsAndSpaces()
+    {
+        var left = new Person("  José   da Silva ");
+        var right = new Person("JOSE DA SILVA");
+        left.UpdateProfile(left.FullName, null, new DateOnly(1990, 1, 1));
+        right.UpdateProfile(right.FullName, null, new DateOnly(1990, 1, 1));
+
+        var result = IdentityMatching.Compare(left, right);
+
+        Assert.Equal(DuplicateMatchKind.Possible, result.Kind);
+        Assert.Contains("normalized_name", result.Signals);
+        Assert.Contains("date_of_birth", result.Signals);
+    }
+
+    [Fact]
+    public void ArchivedPerson_CannotBeUpdatedUntilReactivated()
+    {
+        var person = new Person("Ana Silva");
+        person.Archive();
+
+        Assert.Throws<DomainException>(() => person.UpdateProfile("Ana Santos", null, null));
+        person.Reactivate();
+
+        Assert.Equal(IdentityStatus.Active, person.Status);
+    }
 }

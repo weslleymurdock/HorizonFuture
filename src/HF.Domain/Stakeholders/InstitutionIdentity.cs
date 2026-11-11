@@ -1,4 +1,5 @@
 using HF.Domain.Common.Aggregates;
+using HF.Domain.Common.Exceptions;
 
 namespace HF.Domain.Stakeholders;
 
@@ -22,7 +23,7 @@ public sealed class InstitutionIdentity : AggregateRoot
     {
         if (Status != IdentityStatus.Active)
         {
-            throw new InvalidOperationException("The institution identity is not active.");
+            throw new DomainException("identity.inactive", "The institution identity is not active.");
         }
 
         LegalName = Require(legalName);
@@ -34,6 +35,17 @@ public sealed class InstitutionIdentity : AggregateRoot
     public void Archive()
     {
         Status = IdentityStatus.Archived;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Reactivate()
+    {
+        if (Status != IdentityStatus.Archived)
+        {
+            throw new DomainException("identity.not_archived", "Only an archived identity can be reactivated.");
+        }
+
+        Status = IdentityStatus.Active;
         UpdatedAt = DateTime.UtcNow;
     }
 

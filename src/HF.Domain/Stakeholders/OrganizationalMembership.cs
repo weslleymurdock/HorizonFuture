@@ -28,6 +28,10 @@ public sealed class OrganizationalMembership : AggregateRoot
         UnitId = unitId;
         DepartmentId = departmentId;
         Status = MembershipStatus.Active;
+        if (EndsOn < StartsOn)
+        {
+            throw new DomainException("membership.invalid_period", "A membership cannot end before it starts.");
+        }
     }
 
     public string OrganizationId { get; private set; } = string.Empty;
@@ -52,6 +56,11 @@ public sealed class OrganizationalMembership : AggregateRoot
             throw new DomainException("membership.invalid_role_period", "A role cannot end before it starts.");
         }
 
+        if (startsOn < StartsOn || endsOn > EndsOn)
+        {
+            throw new DomainException("membership.role_outside_membership", "A role must be contained by the membership period.");
+        }
+
         if (_roles.Any(existing => existing.Role == role && existing.Overlaps(startsOn, endsOn)))
         {
             throw new DomainException("membership.duplicate_role", "The membership already contains an overlapping role of this type.");
@@ -63,6 +72,11 @@ public sealed class OrganizationalMembership : AggregateRoot
 
     public void End(DateOnly endedOn)
     {
+        if (Status != MembershipStatus.Active)
+        {
+            throw new DomainException("membership.already_ended", "The membership is already inactive.");
+        }
+
         if (endedOn < StartsOn)
         {
             throw new DomainException("membership.invalid_period", "A membership cannot end before it starts.");
@@ -70,11 +84,23 @@ public sealed class OrganizationalMembership : AggregateRoot
 
         Status = MembershipStatus.Ended;
         EndsOn = endedOn;
-        foreach (var role in _roles.Where(role => role.EndsOn is null || role.EndsOn > endedOn))
+        foreach (var role in _roles)
         {
             role.End(endedOn);
         }
 
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ChangeScope(string? unitId, string? departmentId)
+    {
+        if (Status != MembershipStatus.Active)
+        {
+            throw new DomainException("membership.inactive", "The scope of an inactive membership cannot be changed.");
+        }
+
+        UnitId = unitId;
+        DepartmentId = departmentId;
         UpdatedAt = DateTime.UtcNow;
     }
 }

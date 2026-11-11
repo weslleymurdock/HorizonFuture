@@ -45,6 +45,11 @@ public sealed class PersonRelationship : AggregateRoot
 
     public void End(DateOnly endedOn)
     {
+        if (EndsOn.HasValue)
+        {
+            throw new DomainException("person_relationship.already_ended", "The relationship is already ended.");
+        }
+
         if (endedOn < StartsOn)
         {
             throw new DomainException("person_relationship.invalid_period", "The relationship cannot end before it starts.");

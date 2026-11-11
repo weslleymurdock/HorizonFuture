@@ -52,12 +52,18 @@ public sealed class Organization : AggregateRoot
     public OrganizationalUnit AddUnit(string name, string? parentUnitId = null, string? id = null)
     {
         EnsureActive();
+        var normalizedName = NormalizeName(name);
+        if (_units.Any(unit => string.Equals(NormalizeName(unit.Name), normalizedName, StringComparison.Ordinal)))
+        {
+            throw new DomainException("organization.unit.duplicate_name", "The organization already contains a unit with this name.");
+        }
+
         if (parentUnitId is not null && _units.All(unit => unit.Id != parentUnitId))
         {
             throw new DomainException("organization.unit.parent_not_found", "The parent unit does not belong to this organization.");
         }
 
-        var unit = new OrganizationalUnit(Id, name, parentUnitId, id);
+        var unit = new OrganizationalUnit(Id, normalizedName, parentUnitId, id);
         _units.Add(unit);
         UpdatedAt = DateTime.UtcNow;
         return unit;
@@ -66,15 +72,78 @@ public sealed class Organization : AggregateRoot
     public Department AddDepartment(string name, string? unitId = null, string? id = null)
     {
         EnsureActive();
+        var normalizedName = NormalizeName(name);
         if (unitId is not null && _units.All(unit => unit.Id != unitId))
         {
             throw new DomainException("organization.department.unit_not_found", "The department unit does not belong to this organization.");
         }
 
-        var department = new Department(Id, name, unitId, id);
+        if (_departments.Any(department =>
+            department.UnitId == unitId &&
+            string.Equals(NormalizeName(department.Name), normalizedName, StringComparison.Ordinal)))
+        {
+            throw new DomainException("organization.department.duplicate_name", "The department already exists in this scope.");
+        }
+
+        var department = new Department(Id, normalizedName, unitId, id);
         _departments.Add(department);
         UpdatedAt = DateTime.UtcNow;
         return department;
+    }
+
+    public void MoveUnit(string unitId, string? parentUnitId)
+    {
+        EnsureActive();
+        var unit = FindUnit(unitId);
+        if (parentUnitId == unitId)
+        {
+            throw new DomainException("organization.unit.self_parent", "A unit cannot be its own parent.");
+        }
+
+        if (parentUnitId is null)
+        {
+            unit.ChangeParent(null);
+            UpdatedAt = DateTime.UtcNow;
+            return;
+        }
+
+        _ = FindUnit(parentUnitId);
+        var visited = new HashSet<string>(StringComparer.Ordinal) { unitId };
+        var current = parentUnitId;
+        while (current is not null)
+        {
+            if (!visited.Add(current))
+            {
+                throw new DomainException("organization.unit.cycle", "Moving the unit would create a hierarchy cycle.");
+            }
+
+            current = FindUnit(current).ParentUnitId;
+        }
+
+        unit.ChangeParent(parentUnitId);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ArchiveUnit(string unitId, DateOnly effectiveUntil)
+    {
+        EnsureActive();
+        _ = FindUnit(unitId);
+        if (_units.Any(child => child.ParentUnitId == unitId && child.Status == OrganizationalUnitStatus.Active))
+        {
+            throw new DomainException("organization.unit.active_children", "A unit with active subordinate units cannot be archived.");
+        }
+
+        FindUnit(unitId).Deactivate(effectiveUntil);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ArchiveDepartment(string departmentId)
+    {
+        EnsureActive();
+        var department = _departments.FirstOrDefault(item => item.Id == departmentId)
+            ?? throw new DomainException("organization.department.not_found", "The department does not belong to this organization.");
+        department.Archive();
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void Archive()
@@ -110,5 +179,15 @@ public sealed class Organization : AggregateRoot
             ? null
             : new string(value.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
         return normalized;
+    }
+
+    private OrganizationalUnit FindUnit(string unitId) =>
+        _units.FirstOrDefault(unit => unit.Id == unitId)
+        ?? throw new DomainException("organization.unit.not_found", "The unit does not belong to this organization.");
+
+    private static string NormalizeName(string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value);
+        return string.Join(' ', value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 }
