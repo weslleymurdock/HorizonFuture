@@ -20,7 +20,8 @@ public sealed record CreateStudentRequest(
     StudentStatus Status = StudentStatus.Active,
     string? SpecialNeeds = null,
     string? MedicalNotes = null,
-    DateOnly? EnrollmentDate = null)
+    DateOnly? EnrollmentDate = null,
+    string? PersonId = null)
     : IRequest<ResponseBase<StudentResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a student by identifier.</summary>
@@ -46,10 +47,10 @@ public sealed record UpdateStudentRequest(
     string? SchoolUnitId = null,
     StudentStatus Status = StudentStatus.Active,
     string? SpecialNeeds = null,
-    string? MedicalNotes = null)
+    string? MedicalNotes = null,
+    string? PersonId = null)
     : IRequest<ResponseBase<StudentResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a student by identifier.</summary>
 public sealed record DeleteStudentRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

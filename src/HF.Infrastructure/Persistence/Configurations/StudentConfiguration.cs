@@ -16,6 +16,11 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property(s => s.UserId)
             .IsRequired();
 
+        builder.Property(s => s.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(s => s.PersonId);
+
         builder.Property(s => s.RegistrationNumber)
             .IsRequired();
 
@@ -29,4 +34,3 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

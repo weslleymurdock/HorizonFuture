@@ -16,6 +16,11 @@ public class VolunteerConfiguration : IEntityTypeConfiguration<Volunteer>
         builder.Property(v => v.UserId)
             .IsRequired();
 
+        builder.Property(v => v.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(v => v.PersonId);
+
         builder.HasOne<User>()
             .WithOne()
             .HasForeignKey<Volunteer>(v => v.UserId)
@@ -23,4 +28,3 @@ public class VolunteerConfiguration : IEntityTypeConfiguration<Volunteer>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

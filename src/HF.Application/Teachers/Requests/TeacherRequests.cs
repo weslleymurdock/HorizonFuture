@@ -15,7 +15,8 @@ public sealed record CreateTeacherRequest(
     string? Bio = null,
     string? SchoolUnitId = null,
     DateOnly? HireDate = null,
-    TeacherStatus Status = TeacherStatus.Active)
+    TeacherStatus Status = TeacherStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<TeacherResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a teacher by identifier.</summary>
@@ -37,10 +38,10 @@ public sealed record UpdateTeacherRequest(
     string? AcademicDegree = null,
     string? Bio = null,
     string? SchoolUnitId = null,
-    TeacherStatus Status = TeacherStatus.Active)
+    TeacherStatus Status = TeacherStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<TeacherResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a teacher by identifier.</summary>
 public sealed record DeleteTeacherRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

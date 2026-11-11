@@ -23,6 +23,7 @@ public sealed class StudentService(
         var student = new Student
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             RegistrationNumber = request.RegistrationNumber.Trim(),
             DateOfBirth = request.DateOfBirth,
             GuardianName = request.GuardianName?.Trim(),
@@ -70,6 +71,7 @@ public sealed class StudentService(
         }
 
         student.RegistrationNumber = request.RegistrationNumber.Trim();
+        student.PersonId = request.PersonId?.Trim();
         student.DateOfBirth = request.DateOfBirth;
         student.GuardianName = request.GuardianName?.Trim();
         student.GuardianRelationship = request.GuardianRelationship?.Trim();
@@ -157,4 +159,3 @@ public sealed class StudentService(
             student.CreatedBy,
             student.UpdatedBy);
 }
-

@@ -17,7 +17,8 @@ public sealed record CreateVolunteerRequest(
     DateOnly? EndDate = null,
     string? EmergencyContactName = null,
     string? EmergencyContactPhone = null,
-    VolunteerStatus Status = VolunteerStatus.Active)
+    VolunteerStatus Status = VolunteerStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<VolunteerResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a volunteer by identifier.</summary>
@@ -41,10 +42,10 @@ public sealed record UpdateVolunteerRequest(
     DateOnly? EndDate = null,
     string? EmergencyContactName = null,
     string? EmergencyContactPhone = null,
-    VolunteerStatus Status = VolunteerStatus.Active)
+    VolunteerStatus Status = VolunteerStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<VolunteerResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a volunteer by identifier.</summary>
 public sealed record DeleteVolunteerRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

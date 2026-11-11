@@ -13,6 +13,8 @@ public class Collaborator(string? id = null) : EntityBase(id)
     /// </summary>
     public string UserId { get; set; } = string.Empty;
 
+    public string? PersonId { get; set; }
+
     /// <summary>
     /// Employee registration number.
     /// </summary>
@@ -48,4 +50,3 @@ public class Collaborator(string? id = null) : EntityBase(id)
     /// </summary>
     public CollaboratorStatus Status { get; set; } = CollaboratorStatus.Active;
 }
-

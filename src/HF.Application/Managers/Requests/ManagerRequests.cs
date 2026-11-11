@@ -14,7 +14,8 @@ public sealed record CreateManagerRequest(
     string RoleTitle,
     string? SchoolUnitId = null,
     DateOnly? StartDate = null,
-    ManagerStatus Status = ManagerStatus.Active)
+    ManagerStatus Status = ManagerStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<ManagerResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a manager by identifier.</summary>
@@ -35,10 +36,10 @@ public sealed record UpdateManagerRequest(
     string Department,
     string RoleTitle,
     string? SchoolUnitId = null,
-    ManagerStatus Status = ManagerStatus.Active)
+    ManagerStatus Status = ManagerStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<ManagerResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a manager by identifier.</summary>
 public sealed record DeleteManagerRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

@@ -14,6 +14,8 @@ public class Teacher(string? id = null) : EntityBase(id)
     /// </summary>
     public string UserId { get; set; } = string.Empty;
 
+    public string? PersonId { get; set; }
+
     /// <summary>
     /// Institutional registry or employee number.
     /// </summary>
@@ -54,4 +56,3 @@ public class Teacher(string? id = null) : EntityBase(id)
     /// </summary>
     public ICollection<TeacherAssignment> Assignments { get; set; } = [];
 }
-

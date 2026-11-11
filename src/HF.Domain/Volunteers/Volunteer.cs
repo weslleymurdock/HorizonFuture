@@ -13,6 +13,8 @@ public class Volunteer(string? id = null) : EntityBase(id)
     /// </summary>
     public string UserId { get; set; } = string.Empty;
 
+    public string? PersonId { get; set; }
+
     /// <summary>
     /// Activity scope or areas of expertise (e.g., Reading Support, Art Workshop, Sports, IT Mentoring).
     /// </summary>
@@ -58,4 +60,3 @@ public class Volunteer(string? id = null) : EntityBase(id)
     /// </summary>
     public VolunteerStatus Status { get; set; } = VolunteerStatus.Active;
 }
-

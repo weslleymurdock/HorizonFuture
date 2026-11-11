@@ -4,12 +4,12 @@
 
 | ID | Subject and context | Alternatives and consequences | Next action / owner | Evidence | Status |
 |---|---|---|---|---|---|
-| ADR-D01 | Reusable identity versus role-specific tables | reuse reduces duplication; separate tables ease transition but duplicate history | validate with organization and model in stage 02 / product + NGO | cases of one person in multiple roles | open |
+| ADR-D01 | Reusable identity versus role-specific tables | reuse reduces duplication; separate tables ease transition but duplicate history | validate with organization and model in stage 02 / product + NGO | cases of one person in multiple roles | implemented baseline; external validation open |
 | ADR-D02 | Social scope: minimal operation versus broad records | minimum reduces risk; broad increases usefulness and exposure | define cases and privacy review / leadership + DPO | purposes and required fields | open |
 | ADR-D03 | Double-entry now or auditable operational subledger | double-entry increases rigor and scope; subledger accelerates MVP and requires export/review | choose initial product boundary through internal product/technical analysis; review with accountant after stable release / product + finance | report samples and integration | provisional; external review post-release |
 | ADR-D04 | Balance and carry-forward rules | global rule is simple; per-instrument rule is faithful | implement explicit testable policies in stages 06–09; verify with pilot finance staff after stable release | three real anonymized synthetic instruments | blocked by validation |
 | ADR-D05 | Approval limits and delegations | fixed is predictable; configurable serves NGO but requires governance | provide configurable policy model in later stage; pilot defines real thresholds after stable release | approved authority matrix | open |
-| ADR-D06 | Identity/deduplication/merge criteria | automatic is fast; human review reduces false positives | define signals, blocks, and audit / admin + privacy | test cases and error policy | open |
+| ADR-D06 | Identity/deduplication/merge criteria | automatic is fast; human review reduces false positives | define signals, blocks, and audit / admin + privacy | deterministic signals, domain tests, and merge lifecycle | implemented baseline; external validation open |
 | ADR-D07 | Offline data and authority window | more offline time helps field work; increases stale-permission risk | security define window and revocation / technical + NGO | loss and revocation scenarios | open |
 | ADR-D08 | Statement and accountability formats | one format reduces MVP; adapters serve funders | prioritize two formats after samples / finance | authorized files and layouts | open |
 | ADR-D09 | Retention, export, and deletion | long retention helps audit; increases exposure | implement privacy-safe defaults; qualified review after stable release and before broad rollout | applicable documentary policy | blocked by validation |
@@ -49,6 +49,7 @@
 | MVP and deferred capabilities | document 06 | documented | product approval |
 | Decision owner and evidence | this document | documented | close blocked ADRs |
 | Shared domain kernel implementation | `HF.Domain` primitives and unit-test sources | implemented; test execution pending | run tests after adapter/workload compatibility is resolved |
+| Organization and stakeholder domain baseline | `HF.Domain.Organization`, `HF.Domain.Stakeholders`, `HF.Domain.Governance`, EF configurations, and Stage 02 migration | implemented; test execution pending | resolve test adapter discovery and run domain tests |
 | Terminology with NGO finance professional | no record/evidence in repository | deferred post-release | interview/recorded review after first stable release |
 | Obligations with qualified accountant/advisor | no record/evidence in repository | deferred post-release | documented review after first stable release |
 

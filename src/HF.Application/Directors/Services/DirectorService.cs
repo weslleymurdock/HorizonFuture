@@ -21,6 +21,7 @@ public sealed class DirectorService(
         var director = new Director
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             Directorate = request.Directorate.Trim(),
             PositionTitle = request.PositionTitle.Trim(),
             SchoolUnitId = request.SchoolUnitId?.Trim(),
@@ -63,6 +64,7 @@ public sealed class DirectorService(
         }
 
         director.Directorate = request.Directorate.Trim();
+        director.PersonId = request.PersonId?.Trim();
         director.PositionTitle = request.PositionTitle.Trim();
         director.SchoolUnitId = request.SchoolUnitId?.Trim();
         if (request.MandateStart.HasValue)
@@ -121,4 +123,3 @@ public sealed class DirectorService(
             director.CreatedBy,
             director.UpdatedBy);
 }
-

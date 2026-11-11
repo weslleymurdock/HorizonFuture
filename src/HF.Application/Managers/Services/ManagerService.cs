@@ -21,6 +21,7 @@ public sealed class ManagerService(
         var manager = new Manager
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             EmployeeNumber = request.EmployeeNumber.Trim(),
             Department = request.Department.Trim(),
             RoleTitle = request.RoleTitle.Trim(),
@@ -63,6 +64,7 @@ public sealed class ManagerService(
         }
 
         manager.EmployeeNumber = request.EmployeeNumber.Trim();
+        manager.PersonId = request.PersonId?.Trim();
         manager.Department = request.Department.Trim();
         manager.RoleTitle = request.RoleTitle.Trim();
         manager.SchoolUnitId = request.SchoolUnitId?.Trim();
@@ -126,4 +128,3 @@ public sealed class ManagerService(
             manager.CreatedBy,
             manager.UpdatedBy);
 }
-

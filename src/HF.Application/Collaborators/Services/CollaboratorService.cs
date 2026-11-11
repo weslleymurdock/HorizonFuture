@@ -21,6 +21,7 @@ public sealed class CollaboratorService(
         var collaborator = new Collaborator
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             EmployeeNumber = request.EmployeeNumber.Trim(),
             JobTitle = request.JobTitle.Trim(),
             Department = request.Department.Trim(),
@@ -64,6 +65,7 @@ public sealed class CollaboratorService(
         }
 
         collaborator.EmployeeNumber = request.EmployeeNumber.Trim();
+        collaborator.PersonId = request.PersonId?.Trim();
         collaborator.JobTitle = request.JobTitle.Trim();
         collaborator.Department = request.Department.Trim();
         collaborator.SchoolUnitId = request.SchoolUnitId?.Trim();
@@ -129,4 +131,3 @@ public sealed class CollaboratorService(
             collaborator.CreatedBy,
             collaborator.UpdatedBy);
 }
-

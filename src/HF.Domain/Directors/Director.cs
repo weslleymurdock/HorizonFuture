@@ -13,6 +13,8 @@ public class Director(string? id = null) : EntityBase(id)
     /// </summary>
     public string UserId { get; set; } = string.Empty;
 
+    public string? PersonId { get; set; }
+
     /// <summary>
     /// Directorate or board division (e.g., Executive Directorate, Pedagogical Directorate, Financial Directorate).
     /// </summary>
@@ -43,4 +45,3 @@ public class Director(string? id = null) : EntityBase(id)
     /// </summary>
     public DirectorStatus Status { get; set; } = DirectorStatus.Active;
 }
-

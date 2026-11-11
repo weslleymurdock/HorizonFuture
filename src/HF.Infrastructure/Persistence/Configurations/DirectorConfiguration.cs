@@ -16,6 +16,11 @@ public class DirectorConfiguration : IEntityTypeConfiguration<Director>
         builder.Property(d => d.UserId)
             .IsRequired();
 
+        builder.Property(d => d.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(d => d.PersonId);
+
         builder.Property(d => d.Directorate)
             .IsRequired();
 
@@ -29,4 +34,3 @@ public class DirectorConfiguration : IEntityTypeConfiguration<Director>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

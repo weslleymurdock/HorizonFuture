@@ -15,7 +15,8 @@ public sealed record CreateCollaboratorRequest(
     string? SchoolUnitId = null,
     ContractType ContractType = ContractType.PermanentClt,
     DateOnly? AdmissionDate = null,
-    CollaboratorStatus Status = CollaboratorStatus.Active)
+    CollaboratorStatus Status = CollaboratorStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<CollaboratorResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a collaborator by identifier.</summary>
@@ -37,10 +38,10 @@ public sealed record UpdateCollaboratorRequest(
     string Department,
     string? SchoolUnitId = null,
     ContractType ContractType = ContractType.PermanentClt,
-    CollaboratorStatus Status = CollaboratorStatus.Active)
+    CollaboratorStatus Status = CollaboratorStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<CollaboratorResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a collaborator by identifier.</summary>
 public sealed record DeleteCollaboratorRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

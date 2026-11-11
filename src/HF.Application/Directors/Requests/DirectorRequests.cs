@@ -14,7 +14,8 @@ public sealed record CreateDirectorRequest(
     string? SchoolUnitId = null,
     DateOnly? MandateStart = null,
     DateOnly? MandateEnd = null,
-    DirectorStatus Status = DirectorStatus.Active)
+    DirectorStatus Status = DirectorStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<DirectorResponse>>, ITransactionalRequest;
 
 /// <summary>Query to get a director by identifier.</summary>
@@ -36,10 +37,10 @@ public sealed record UpdateDirectorRequest(
     string? SchoolUnitId = null,
     DateOnly? MandateStart = null,
     DateOnly? MandateEnd = null,
-    DirectorStatus Status = DirectorStatus.Active)
+    DirectorStatus Status = DirectorStatus.Active,
+    string? PersonId = null)
     : IRequest<ResponseBase<DirectorResponse>>, ITransactionalRequest;
 
 /// <summary>Command to delete a director by identifier.</summary>
 public sealed record DeleteDirectorRequest(string Id)
     : IRequest<ResponseBase<bool>>, ITransactionalRequest;
-

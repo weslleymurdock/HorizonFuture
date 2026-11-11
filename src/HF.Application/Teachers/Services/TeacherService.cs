@@ -23,6 +23,7 @@ public sealed class TeacherService(
         var teacher = new Teacher
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             EmployeeNumber = request.EmployeeNumber.Trim(),
             Specialty = request.Specialty.Trim(),
             AcademicDegree = request.AcademicDegree?.Trim(),
@@ -66,6 +67,7 @@ public sealed class TeacherService(
         }
 
         teacher.EmployeeNumber = request.EmployeeNumber.Trim();
+        teacher.PersonId = request.PersonId?.Trim();
         teacher.Specialty = request.Specialty.Trim();
         teacher.AcademicDegree = request.AcademicDegree?.Trim();
         teacher.Bio = request.Bio?.Trim();
@@ -143,4 +145,3 @@ public sealed class TeacherService(
             teacher.CreatedBy,
             teacher.UpdatedBy);
 }
-

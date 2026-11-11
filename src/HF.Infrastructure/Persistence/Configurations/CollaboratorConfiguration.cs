@@ -16,6 +16,11 @@ public class CollaboratorConfiguration : IEntityTypeConfiguration<Collaborator>
         builder.Property(c => c.UserId)
             .IsRequired();
 
+        builder.Property(c => c.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(c => c.PersonId);
+
         builder.Property(c => c.EmployeeNumber)
             .IsRequired();
 
@@ -35,4 +40,3 @@ public class CollaboratorConfiguration : IEntityTypeConfiguration<Collaborator>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

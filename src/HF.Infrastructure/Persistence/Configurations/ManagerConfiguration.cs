@@ -16,6 +16,11 @@ public class ManagerConfiguration : IEntityTypeConfiguration<Manager>
         builder.Property(m => m.UserId)
             .IsRequired();
 
+        builder.Property(m => m.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(m => m.PersonId);
+
         builder.Property(m => m.EmployeeNumber)
             .IsRequired();
 
@@ -35,4 +40,3 @@ public class ManagerConfiguration : IEntityTypeConfiguration<Manager>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

@@ -6,6 +6,20 @@ Model the NGO's organizational structure and the people and institutions that pa
 ## Dependencies
 Stage 01.
 
+## Implemented baseline
+
+The repository now contains the framework-independent Stage 02 domain baseline under
+`HF.Domain.Organization`, `HF.Domain.Stakeholders`, and `HF.Domain.Governance`. It includes
+organization/unit/department lifecycle, reusable person and institution identities,
+organizational memberships with multiple dated roles, explicit authentication-account links,
+person relationships, governance mandates, authority assignments, deterministic duplicate
+matching, and an approval-tracked identity merge.
+
+The existing educational role records remain operational projections during migration. They
+carry an optional `PersonId` reference to the canonical identity while preserving their
+education-specific fields and existing `UserId` compatibility links. See
+`docs/guidelines/organization-and-stakeholders.md` for the mapping and invariants.
+
 ## Work
 - Define the NGO profile, legal/registration identifiers, addresses, contacts, governance bodies, units, departments, and operating locations.
 - Model users, roles, capabilities, invitations, memberships, approval authority, and scoped access to units/programs/projects.

@@ -16,6 +16,11 @@ public class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
         builder.Property(t => t.UserId)
             .IsRequired();
 
+        builder.Property(t => t.PersonId)
+            .HasMaxLength(36);
+
+        builder.HasIndex(t => t.PersonId);
+
         builder.Property(t => t.EmployeeNumber)
             .IsRequired();
 
@@ -32,4 +37,3 @@ public class TeacherConfiguration : IEntityTypeConfiguration<Teacher>
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-

@@ -21,6 +21,7 @@ public sealed class VolunteerService(
         var volunteer = new Volunteer
         {
             UserId = request.UserId,
+            PersonId = request.PersonId?.Trim(),
             SkillsAndInterests = request.SkillsAndInterests?.Trim(),
             AvailableHoursPerWeek = request.AvailableHoursPerWeek,
             AvailabilityNotes = request.AvailabilityNotes?.Trim(),
@@ -65,6 +66,7 @@ public sealed class VolunteerService(
         }
 
         volunteer.SkillsAndInterests = request.SkillsAndInterests?.Trim();
+        volunteer.PersonId = request.PersonId?.Trim();
         volunteer.AvailableHoursPerWeek = request.AvailableHoursPerWeek;
         volunteer.AvailabilityNotes = request.AvailabilityNotes?.Trim();
         volunteer.SchoolUnitId = request.SchoolUnitId?.Trim();
@@ -129,4 +131,3 @@ public sealed class VolunteerService(
             volunteer.CreatedBy,
             volunteer.UpdatedBy);
 }
-

@@ -15,6 +15,12 @@ public class Student(string? id = null) : EntityBase(id)
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>
+    /// Canonical person identity. UserId remains a compatibility link for the
+    /// existing education flow and is not the civil identity.
+    /// </summary>
+    public string? PersonId { get; set; }
+
+    /// <summary>
     /// Student registration or enrollment code within the institution.
     /// </summary>
     public string RegistrationNumber { get; set; } = string.Empty;
@@ -79,4 +85,3 @@ public class Student(string? id = null) : EntityBase(id)
     /// </summary>
     public ICollection<Enrollment> Enrollments { get; set; } = [];
 }
-
