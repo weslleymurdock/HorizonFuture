@@ -70,20 +70,27 @@ erDiagram
   autorreferência, unidade externa e ciclos indiretos.
 - Nomes de unidades e departamentos são comparados com espaços normalizados dentro do escopo da
   organização; a mesma regra não impõe unicidade entre organizações.
-- Unidades com subordinadas ativas não podem ser arquivadas. Arquivamento repetido é idempotente
-  para departamentos, enquanto operações em memberships, relacionamentos, mandatos e autoridades
-  encerrados são rejeitadas.
+- Unidades com subordinadas ativas não podem ser arquivadas, e a operação é exposta pelo
+  agregado `Organization`; unidades e departamentos não oferecem mutações públicas que
+  contornem a unicidade ou os guardas de ciclo de vida. Departamentos arquivados não podem ser
+  arquivados novamente, enquanto operações em memberships, relacionamentos, mandatos e
+  autoridades encerrados são rejeitadas.
+- O encerramento de uma membership anterior ao início de um papel é rejeitado. Papéis já
+  encerrados preservam seu intervalo histórico; somente papéis ainda abertos são encerrados
+  com a membership.
+- `MembershipScope` carrega a organização e a unidade do departamento para que alterações de
+  escopo rejeitem combinações incompatíveis antes da persistência.
 - Identidades podem ser reativadas explicitamente. Atualizações de identidades arquivadas são
   rejeitadas.
 - A normalização de matching remove marcas Unicode, normaliza caixa e espaços, e nunca classifica
   nomes iguais isoladamente como correspondência exata.
 
-## Validação externa obrigatória
+## Validação externa
 
-Os testes deste estágio devem ser executados fora da sandbox. A sessão de implementação validou
-compilação e descoberta das migrações, mas o adaptador local reportou zero testes descobertos;
-isso não é resultado aprovado. A aceitação exige registrar, em ambiente externo, o SDK/workloads,
-os comandos executados e os totais literais de testes unitários, regressão, UI e autenticação.
+Os testes backend deste estágio devem ser executados fora da sandbox. A validação registrada usa
+o projeto `tests\HF.UnitTests\HF.UnitTests.csproj`, sem executar UI porque não há interface de
+produto neste estágio. A execução deve registrar SDK, comando exato e totais literais; testes de
+Razor/rotas permanecem separados em `HF.UITests`.
 
 ## Privacidade e ciclo de vida
 

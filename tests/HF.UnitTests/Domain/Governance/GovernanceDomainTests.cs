@@ -39,6 +39,18 @@ public sealed class GovernanceDomainTests
     }
 
     [Fact]
+    public void MandateAndAuthorityRejectRepeatedTransitions()
+    {
+        var mandate = new GovernanceMandate("org-1", "body-1", "person-1", "Presidente", new DateOnly(2026, 1, 1));
+        mandate.End(new DateOnly(2026, 2, 1));
+        Assert.Throws<DomainException>(() => mandate.End(new DateOnly(2026, 2, 1)));
+
+        var authority = new AuthorityAssignment("org-1", "person-1", "Approve", new DateOnly(2026, 1, 1));
+        authority.Revoke(new DateOnly(2026, 2, 1));
+        Assert.Throws<DomainException>(() => authority.Revoke(new DateOnly(2026, 2, 1)));
+    }
+
+    [Fact]
     public void IdentityMatching_DoesNotMergeByNameAlone()
     {
         var left = new Person("Ana Silva");
@@ -47,5 +59,25 @@ public sealed class GovernanceDomainTests
         var result = IdentityMatching.Compare(left, right);
 
         Assert.Equal(DuplicateMatchKind.None, result.Kind);
+    }
+
+    [Fact]
+    public void IdentityMerge_RejectsAndCannotResumeAfterRejection()
+    {
+        var merge = new IdentityMerge("source", "target", IdentityKind.Person, "Confirmed duplicate");
+        var rejectedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        merge.Reject(rejectedAt, "reviewer");
+
+        Assert.Equal(IdentityMergeStatus.Rejected, merge.Status);
+        Assert.Throws<DomainException>(() => merge.Reject(rejectedAt.AddMinutes(1), "reviewer"));
+        Assert.Throws<DomainException>(() => merge.Approve(rejectedAt, "reviewer"));
+        Assert.Throws<DomainException>(() => merge.Complete(rejectedAt, "operator"));
+    }
+
+    [Fact]
+    public void IdentityMerge_RejectsSameTrimmedIdentity()
+    {
+        Assert.Throws<DomainException>(() =>
+            new IdentityMerge(" source ", "source", IdentityKind.Person, "Duplicate"));
     }
 }

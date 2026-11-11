@@ -11,7 +11,7 @@ public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departmen
         builder.ToTable("Departments");
         builder.HasKey(entity => entity.Id);
         builder.Property(entity => entity.Name).HasMaxLength(160).IsRequired();
-        builder.HasIndex(entity => new { entity.OrganizationId, entity.Name }).IsUnique();
+        builder.HasIndex(entity => new { entity.OrganizationId, entity.UnitId, entity.Name }).IsUnique();
         builder.HasOne<OrganizationalUnit>().WithMany().HasForeignKey(entity => entity.UnitId).OnDelete(DeleteBehavior.SetNull);
     }
 }

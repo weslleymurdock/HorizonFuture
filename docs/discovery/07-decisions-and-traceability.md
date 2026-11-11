@@ -49,12 +49,12 @@
 | MVP and deferred capabilities | document 06 | documented | product approval |
 | Decision owner and evidence | this document | documented | close blocked ADRs |
 | Shared domain kernel implementation | `HF.Domain` primitives and unit-test sources | implemented; test execution pending | run tests after adapter/workload compatibility is resolved |
-| Organization and stakeholder domain baseline | `HF.Domain.Organization`, `HF.Domain.Stakeholders`, `HF.Domain.Governance`, EF configurations, Stage 02 migrations, and stabilization tests | implemented; backend validation complete (105 passed) | keep UI validation separate until an interface is implemented |
+| Organization and stakeholder domain baseline | `HF.Domain.Organization`, `HF.Domain.Stakeholders`, `HF.Domain.Governance`, EF configurations, Stage 02 migrations, and stabilization tests | implemented; backend validation complete (115 passed) | keep UI validation separate until an interface is implemented |
 
 ### External test execution requirement
 
 Backend tests for Stage 02 must be executed outside the sandbox. The external run used
-`dotnet test tests\HF.UnitTests\HF.UnitTests.csproj` and completed with 105 passed, 0 failed,
+`dotnet test tests\HF.UnitTests\HF.UnitTests.csproj` and completed with 115 passed, 0 failed,
 and 0 skipped. The validation host was `SNOWICE` with .NET SDK `10.0.403`; a repeat
 `--no-restore --no-build` run produced the same totals. Shared Razor/UI tests are a separate
 validation concern in `HF.UITests` and are not required for Stage 02 backend acceptance because

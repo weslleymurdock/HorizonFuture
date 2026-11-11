@@ -22,7 +22,7 @@ public sealed class OrganizationalUnit : EntityBase
     public DateOnly EffectiveFrom { get; private set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public DateOnly? EffectiveUntil { get; private set; }
 
-    public void Rename(string name)
+    internal void Rename(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
@@ -35,7 +35,7 @@ public sealed class OrganizationalUnit : EntityBase
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Deactivate(DateOnly effectiveUntil)
+    internal void Deactivate(DateOnly effectiveUntil)
     {
         if (Status != OrganizationalUnitStatus.Active)
         {

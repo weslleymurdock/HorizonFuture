@@ -35,7 +35,10 @@ public static class IdentityMatching
             signals.Add("date_of_birth");
         }
 
-        var kind = signals.Contains("normalized_document", StringComparer.Ordinal)
+        var hasDocument = signals.Contains("normalized_document", StringComparer.Ordinal);
+        var hasSupportingIdentity = signals.Contains("normalized_name", StringComparer.Ordinal) ||
+            signals.Contains("date_of_birth", StringComparer.Ordinal);
+        var kind = hasDocument && hasSupportingIdentity
             ? DuplicateMatchKind.Exact
             : signals.Count >= 2 ? DuplicateMatchKind.Possible : DuplicateMatchKind.None;
 

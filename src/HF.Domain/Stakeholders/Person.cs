@@ -29,6 +29,11 @@ public sealed class Person : AggregateRoot
 
     public void Archive()
     {
+        if (Status != IdentityStatus.Active)
+        {
+            throw new DomainException("identity.already_archived", "The identity is already archived.");
+        }
+
         Status = IdentityStatus.Archived;
         UpdatedAt = DateTime.UtcNow;
     }

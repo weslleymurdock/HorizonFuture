@@ -31,6 +31,11 @@ public sealed class PersonRelationship : AggregateRoot
 
         ArgumentException.ThrowIfNullOrWhiteSpace(personId);
         ArgumentException.ThrowIfNullOrWhiteSpace(relatedPersonId);
+        if (!Enum.IsDefined(type))
+        {
+            throw new DomainException("person_relationship.invalid_type", "The relationship type is invalid.");
+        }
+
         PersonId = personId;
         RelatedPersonId = relatedPersonId;
         Type = type;

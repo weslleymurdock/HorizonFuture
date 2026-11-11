@@ -40,6 +40,11 @@ public sealed class AuthorityAssignment : AggregateRoot
 
     public void Revoke(DateOnly revokedOn)
     {
+        if (Status != AuthorityAssignmentStatus.Active)
+        {
+            throw new DomainException("authority.already_inactive", "The authority assignment is no longer active.");
+        }
+
         if (revokedOn < StartsOn)
         {
             throw new DomainException("authority.invalid_revoke", "An authority cannot be revoked before it starts.");

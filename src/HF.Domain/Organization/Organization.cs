@@ -91,6 +91,36 @@ public sealed class Organization : AggregateRoot
         return department;
     }
 
+    public void RenameUnit(string unitId, string name)
+    {
+        EnsureActive();
+        var normalizedName = NormalizeName(name);
+        if (_units.Any(unit => unit.Id != unitId &&
+            string.Equals(NormalizeName(unit.Name), normalizedName, StringComparison.Ordinal)))
+        {
+            throw new DomainException("organization.unit.duplicate_name", "The organization already contains a unit with this name.");
+        }
+
+        FindUnit(unitId).Rename(normalizedName);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RenameDepartment(string departmentId, string name)
+    {
+        EnsureActive();
+        var department = _departments.FirstOrDefault(item => item.Id == departmentId)
+            ?? throw new DomainException("organization.department.not_found", "The department does not belong to this organization.");
+        var normalizedName = NormalizeName(name);
+        if (_departments.Any(item => item.Id != departmentId && item.UnitId == department.UnitId &&
+            string.Equals(NormalizeName(item.Name), normalizedName, StringComparison.Ordinal)))
+        {
+            throw new DomainException("organization.department.duplicate_name", "The department already exists in this scope.");
+        }
+
+        department.Rename(normalizedName);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MoveUnit(string unitId, string? parentUnitId)
     {
         EnsureActive();
@@ -148,7 +178,8 @@ public sealed class Organization : AggregateRoot
 
     public void Archive()
     {
-        if (_units.Any(unit => unit.Status == OrganizationalUnitStatus.Active))
+        if (_units.Any(unit => unit.Status == OrganizationalUnitStatus.Active) ||
+            _departments.Any(department => department.IsActive))
         {
             throw new DomainException("organization.active_units", "An organization with active units cannot be archived.");
         }

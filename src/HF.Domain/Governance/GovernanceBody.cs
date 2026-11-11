@@ -21,7 +21,7 @@ public sealed class GovernanceBody : EntityBase
     public string Type { get; private set; } = string.Empty;
     public bool IsActive { get; private set; }
 
-    public void Rename(string name)
+    internal void Rename(string name)
     {
         Name = Require(name);
         UpdatedAt = DateTime.UtcNow;
@@ -29,6 +29,11 @@ public sealed class GovernanceBody : EntityBase
 
     public void Archive()
     {
+        if (!IsActive)
+        {
+            throw new DomainException("governance_body.already_archived", "The governance body is already inactive.");
+        }
+
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }

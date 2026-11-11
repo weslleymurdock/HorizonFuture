@@ -44,6 +44,25 @@ public sealed class OrganizationalMembership : AggregateRoot
     public MembershipStatus Status { get; private set; }
     public IReadOnlyCollection<MembershipRole> Roles => _roles.AsReadOnly();
 
+    public void ChangeScope(MembershipScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (Status != MembershipStatus.Active)
+        {
+            throw new DomainException("membership.inactive", "The scope of an inactive membership cannot be changed.");
+        }
+
+        if (scope.OrganizationId != OrganizationId ||
+            (scope.DepartmentUnitId is not null && scope.DepartmentUnitId != scope.UnitId))
+        {
+            throw new DomainException("membership.scope_mismatch", "The membership scope does not belong to the membership organization.");
+        }
+
+        UnitId = scope.UnitId;
+        DepartmentId = scope.DepartmentId;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void AddRole(StakeholderRoleType role, DateOnly startsOn, DateOnly? endsOn = null)
     {
         if (Status != MembershipStatus.Active)
@@ -82,9 +101,14 @@ public sealed class OrganizationalMembership : AggregateRoot
             throw new DomainException("membership.invalid_period", "A membership cannot end before it starts.");
         }
 
+        if (_roles.Any(role => role.StartsOn > endedOn))
+        {
+            throw new DomainException("membership.invalid_period", "A membership cannot end before an active role starts.");
+        }
+
         Status = MembershipStatus.Ended;
         EndsOn = endedOn;
-        foreach (var role in _roles)
+        foreach (var role in _roles.Where(role => role.EndsOn is null))
         {
             role.End(endedOn);
         }
@@ -92,17 +116,28 @@ public sealed class OrganizationalMembership : AggregateRoot
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ChangeScope(string? unitId, string? departmentId)
+}
+
+public sealed record MembershipScope
+{
+    public MembershipScope(string organizationId, string? unitId = null, string? departmentId = null, string? departmentUnitId = null)
     {
-        if (Status != MembershipStatus.Active)
+        ArgumentException.ThrowIfNullOrWhiteSpace(organizationId);
+        if (departmentId is null && departmentUnitId is not null)
         {
-            throw new DomainException("membership.inactive", "The scope of an inactive membership cannot be changed.");
+            throw new DomainException("membership.scope_mismatch", "A department unit requires a department.");
         }
 
+        OrganizationId = organizationId;
         UnitId = unitId;
         DepartmentId = departmentId;
-        UpdatedAt = DateTime.UtcNow;
+        DepartmentUnitId = departmentUnitId;
     }
+
+    public string OrganizationId { get; }
+    public string? UnitId { get; }
+    public string? DepartmentId { get; }
+    public string? DepartmentUnitId { get; }
 }
 
 public sealed class MembershipRole : EntityBase

@@ -17,7 +17,9 @@ public sealed class IdentityMerge : AggregateRoot
 
     public IdentityMerge(string sourceIdentityId, string targetIdentityId, IdentityKind identityKind, string reason, string? id = null) : base(id)
     {
-        if (sourceIdentityId == targetIdentityId)
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceIdentityId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetIdentityId);
+        if (string.Equals(sourceIdentityId.Trim(), targetIdentityId.Trim(), StringComparison.Ordinal))
         {
             throw new DomainException("identity_merge.same_identity", "Source and target identities must be different.");
         }
@@ -69,18 +71,23 @@ public sealed class IdentityMerge : AggregateRoot
         UpdatedAt = completedAtUtc;
     }
 
-    public void Reject(string rejectedBy)
+    public void Reject(DateTime rejectedAtUtc, string rejectedBy)
     {
-        if (Status == IdentityMergeStatus.Completed)
+        if (Status != IdentityMergeStatus.Proposed && Status != IdentityMergeStatus.Approved)
         {
-            throw new DomainException("identity_merge.completed", "A completed merge cannot be rejected.");
+            throw new DomainException("identity_merge.invalid_rejection", "Only a proposed or approved merge can be rejected.");
+        }
+
+        if (rejectedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException("identity_merge.invalid_rejection", "The rejection timestamp must be UTC.");
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(rejectedBy);
         Status = IdentityMergeStatus.Rejected;
-        RejectedAtUtc = DateTime.UtcNow;
+        RejectedAtUtc = rejectedAtUtc;
         RejectedBy = rejectedBy.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = rejectedAtUtc;
     }
 
     private static string Require(string value)

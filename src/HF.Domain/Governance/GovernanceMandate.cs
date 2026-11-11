@@ -47,6 +47,11 @@ public sealed class GovernanceMandate : AggregateRoot
 
     public void End(DateOnly endedOn)
     {
+        if (Status != GovernanceMandateStatus.Active)
+        {
+            throw new DomainException("mandate.already_ended", "The mandate is no longer active.");
+        }
+
         if (endedOn < StartsOn)
         {
             throw new DomainException("mandate.invalid_end", "A mandate cannot end before it starts.");

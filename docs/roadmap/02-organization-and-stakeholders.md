@@ -40,8 +40,8 @@ dotnet test tests\HF.UnitTests\HF.UnitTests.csproj
 ```
 
 The external execution record includes the host, SDK, exact backend commands, and literal test
-totals. UI tests are intentionally excluded because no interface implementation is part of Stage
-02.
+totals: 115 passed, 0 failed, and 0 skipped on `SNOWICE` with .NET SDK `10.0.403`. UI tests are
+intentionally excluded because no interface implementation is part of Stage 02.
 
 Backend unit tests are intentionally isolated from `HF.Shared`, `HF.Client`, MAUI, and browser/UI
 dependencies. Shared Razor component and route tests live in `HF.UITests`; they are not part of

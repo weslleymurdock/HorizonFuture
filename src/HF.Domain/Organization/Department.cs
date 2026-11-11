@@ -1,4 +1,5 @@
 using HF.Domain.Common.Entities;
+using HF.Domain.Common.Exceptions;
 
 namespace HF.Domain.Organization;
 
@@ -18,18 +19,18 @@ public sealed class Department : EntityBase
     public string Name { get; private set; } = string.Empty;
     public bool IsActive { get; private set; } = true;
 
-    public void Rename(string name)
+    internal void Rename(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         Name = name.Trim();
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Archive()
+    internal void Archive()
     {
         if (!IsActive)
         {
-            return;
+            throw new DomainException("organization.department.inactive", "The department is already inactive.");
         }
 
         IsActive = false;

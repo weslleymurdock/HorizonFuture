@@ -743,7 +743,7 @@ namespace HF.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("UnitId");
 
-                    b.HasIndex("OrganizationId", "Name")
+                    b.HasIndex("OrganizationId", "UnitId", "Name")
                         .IsUnique();
 
                     b.ToTable("Departments", (string)null);
@@ -1183,6 +1183,10 @@ namespace HF.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true");
 
                     b.HasIndex("IdentityId", "IdentityKind", "AccountId")
                         .IsUnique();

@@ -34,6 +34,11 @@ public sealed class InstitutionIdentity : AggregateRoot
 
     public void Archive()
     {
+        if (Status != IdentityStatus.Active)
+        {
+            throw new DomainException("identity.already_archived", "The identity is already archived.");
+        }
+
         Status = IdentityStatus.Archived;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -52,7 +57,7 @@ public sealed class InstitutionIdentity : AggregateRoot
     private static string Require(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
-        return value.Trim();
+        return string.Join(' ', value.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static string? NormalizeIdentifier(string? value) =>

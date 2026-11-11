@@ -61,6 +61,7 @@ public sealed class UserAccountLinkConfiguration : IEntityTypeConfiguration<User
         builder.Property(entity => entity.IdentityId).HasMaxLength(36).IsRequired();
         builder.Property(entity => entity.AccountId).HasMaxLength(36).IsRequired();
         builder.HasIndex(entity => new { entity.IdentityId, entity.IdentityKind, entity.AccountId }).IsUnique();
+        builder.HasIndex(entity => entity.AccountId).IsUnique().HasFilter("\"IsActive\" = true");
     }
 }
 
