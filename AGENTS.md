@@ -5,15 +5,15 @@
 - Early .NET 10 solution under `src/`: `HF.API`, `HF.Application`, `HF.Composition`, `HF.Domain`, `HF.Infrastructure`, `HF.Mobile`, and `HF.Web`.
 - `HF.Mobile` is a MAUI Blazor Hybrid template targeting Android and, on supported build hosts, iOS, MacCatalyst, and Windows. It currently has no MudBlazor package, product workflow, local persistence, or API integration.
 - `HF.Web` is a Blazor WebAssembly template targeting `net10.0` with MudBlazor `9.*`. Its weather sample reads bundled JSON; it is not integrated with the REST API.
-- `HF.API` contains domain controllers, authentication, and EF Core PostgreSQL persistence. Client REST integration and sync protocol are not implemented.
+- `HF.API` contains the current backend foundation, authentication, and EF Core PostgreSQL persistence. The expanded NGO social/funding/financial domain and complete client REST/sync workflows remain roadmap work.
 - Read scoped guidance in `src/AGENTS.md` and `docs/AGENTS.md`. Antigravity skills are in `.agents/skills/`; workspace MCP configuration is `.agents/mcp_config.json`.
 - Keep these baseline facts current. Treat roadmap statements as plans, not evidence of implementation.
 
 ## Architecture direction
 
-The intended product is an offline-first app for an NGO with multiple school units:
+The intended product is an NGO management platform that connects social-service delivery, projects/impact, fundraising, restricted funding, budgets, financial operations, reconciliation, and accountability, with an offline-first MAUI client:
 
-- .NET MAUI clients use local SQLite for normal reads/writes and remain useful without connectivity.
+- PostgreSQL is the only server relational database. MAUI clients use local SQLite for offline reads/writes and synchronize with the cloud backend when connected.
 - ASP.NET Core REST API is the authenticated server boundary.
 - Each NGO receives an independent single-tenant backend deployment, PostgreSQL database, secrets/configuration, and MAUI app configured with that installation’s backend URL. Keep provider code behind abstractions and migrations portable where appropriate.
 - Application data paths serve one NGO per installation. Do not require tenant IDs or tenant-isolation filters for per-installation records; enforce user, role, ownership, and school-unit permissions within that NGO. An optional separately authorized cross-installation reporting service may be considered later and is not a normal-operation dependency.
@@ -48,7 +48,8 @@ These are implementation requirements, not claims that they exist today. The ord
 
 ## Documentation
 
-- Keep roadmap numbers stable; append new phases and update the index.
+- The current domain-first roadmap has 19 stages. Stages 01–10 define and accept the backend domain before API/persistence and before MAUI. Do not start MAUI implementation (Stage 14) until Stages 01–13 are accepted. See `docs/roadmap/README.md`.
+- Keep roadmap numbering stable; update the index when the roadmap changes.
 - Mark assumptions, decisions, and checks still required. Use `docs/guidelines/` for durable topic guidance.
 
 ## Completion report
