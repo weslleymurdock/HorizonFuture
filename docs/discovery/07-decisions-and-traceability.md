@@ -6,13 +6,13 @@
 |---|---|---|---|---|---|
 | ADR-D01 | Reusable identity versus role-specific tables | reuse reduces duplication; separate tables ease transition but duplicate history | validate with organization and model in stage 02 / product + NGO | cases of one person in multiple roles | open |
 | ADR-D02 | Social scope: minimal operation versus broad records | minimum reduces risk; broad increases usefulness and exposure | define cases and privacy review / leadership + DPO | purposes and required fields | open |
-| ADR-D03 | Double-entry now or auditable operational subledger | double-entry increases rigor and scope; subledger accelerates MVP and requires export/review | accountant/advisor recommend boundary / finance | report samples and integration | blocked by validation |
-| ADR-D04 | Balance and carry-forward rules | global rule is simple; per-instrument rule is faithful | finance validate formulas and exceptions | three real anonymized synthetic instruments | blocked by validation |
-| ADR-D05 | Approval limits and delegations | fixed is predictable; configurable serves NGO but requires governance | leadership and finance define policy | approved authority matrix | open |
+| ADR-D03 | Double-entry now or auditable operational subledger | double-entry increases rigor and scope; subledger accelerates MVP and requires export/review | choose initial product boundary through internal product/technical analysis; review with accountant after stable release / product + finance | report samples and integration | provisional; external review post-release |
+| ADR-D04 | Balance and carry-forward rules | global rule is simple; per-instrument rule is faithful | implement explicit testable policies in stages 06–09; verify with pilot finance staff after stable release | three real anonymized synthetic instruments | blocked by validation |
+| ADR-D05 | Approval limits and delegations | fixed is predictable; configurable serves NGO but requires governance | provide configurable policy model in later stage; pilot defines real thresholds after stable release | approved authority matrix | open |
 | ADR-D06 | Identity/deduplication/merge criteria | automatic is fast; human review reduces false positives | define signals, blocks, and audit / admin + privacy | test cases and error policy | open |
 | ADR-D07 | Offline data and authority window | more offline time helps field work; increases stale-permission risk | security define window and revocation / technical + NGO | loss and revocation scenarios | open |
 | ADR-D08 | Statement and accountability formats | one format reduces MVP; adapters serve funders | prioritize two formats after samples / finance | authorized files and layouts | open |
-| ADR-D09 | Retention, export, and deletion | long retention helps audit; increases exposure | legal/privacy and accountant validate by category | applicable documentary policy | blocked by validation |
+| ADR-D09 | Retention, export, and deletion | long retention helps audit; increases exposure | implement privacy-safe defaults; qualified review after stable release and before broad rollout | applicable documentary policy | blocked by validation |
 | ADR-D10 | Bank, gateway, and signature integrations | manual reduces dependencies; integration reduces work and creates vendor risk | assess only after MVP / leadership + technical | cost, security, and contract | deferred |
 
 ## Traceability matrix
@@ -31,7 +31,7 @@
 
 | Criterion | Evidence | Status | Remaining action |
 |---|---|---|---|
-| Glossary, actors, workflows, backlog, inventory, and threats | documents 02–06 | documented | stakeholder review |
+| Discovery glossary, actors, workflows, backlog, inventory, and threats | documents 01–07 | documented | maintain consistency as domain is implemented |
 | Distinct operating models | document 01 | documented | validate with more than one NGO |
 | Governance and stakeholders | documents 02–03 | documented | stage 02 |
 | Social services | documents 02–03 | documented | delimit sensitive scope |
@@ -42,7 +42,7 @@
 | Authorization and segregation | documents 03–05, FR-10 | documented | threshold policy |
 | Reconciliation and accountability | document 04, FR-11/12 | documented | report samples |
 | Audit and evidence | documents 03–05 | documented | retention and review |
-| Explicit accounting boundary | document 04, ADR-D03 | pending | decision with accountant |
+| Explicit accounting boundary | document 04, ADR-D03 | provisional product boundary | review with accountant after stable release |
 | LGPD, privacy, and security | document 05 | documented | legal/DPO review |
 | Operational offline | document 05, FR-14 | documented | scenarios and window policy |
 | MVP and deferred capabilities | document 06 | documented | product approval |
